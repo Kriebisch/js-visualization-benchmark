@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Benchmark Handler</title>
+  <script src="./lib/echarts.js"></script>
+  <link rel="stylesheet" href="../style.css" />
+</head>
+
+<body>
+  <h1>Benchmark Handler Time-Series-Chart</h1>
+  <label for="runCount">Anzahl Durchläufe:</label>
+  <input type="number" id="runCount" min="1" max="100" value="5" style="width: 40px; margin-right: 20px;">
+  <button id="start"> starte x Durchläufe</button>
+  <br>
+  <br>
+  <button id="download">Ergebnisse herunterladen</button>
+  <br>
+  <div id="boxplot-multirun-D3" class="chartDivBoxplot"></div>
+  <br>
+  <div id="boxplot-multirun-ECharts" class="chartDivBoxplot"></div>
+  <br>
+  <div id="boxplot-multirun-Chart" class="chartDivBoxplot"></div>
+  <br>
+  <div id="boxplot-multirun-Chart-RAM-Verbrauch-D3" class="chartDivBoxplot"></div>
+  <br>
+  <div id="boxplot-multirun-Chart-RAM-Verbrauch-ECharts" class="chartDivBoxplot"></div>
+  <br>
+  <div id="boxplot-multirun-Chart-RAM-Verbrauch-Chart" class="chartDivBoxplot"></div>
+  <br>
+  <pre id="trenner-log-d3"></pre>
+  <br>
+  <pre id="trenner-log-d324"></pre>
+  <pre id="d3-log"></pre>
+  <pre id="trenner-log-d3731"></pre>
+  <pre id="d3-log2"></pre>
+  <pre id="trenner-log-d317544"></pre>
+  <pre id="d3-log3"></pre>
+  <pre id="trenner-log-ECharts"></pre>
+  <br>
+  <pre id="trenner-log-ECharts24"></pre>
+  <pre id="Echarts-log"></pre>
+  <pre id="trenner-log-ECharts731"></pre>
+  <pre id="Echarts-log2"></pre>
+  <pre id="trenner-log-ECharts17544"></pre>
+  <pre id="Echarts-log3"></pre>
+  <pre id="trenner-log-Chart.js"></pre>
+  <br>
+  <pre id="trenner-log-Chart.js24"></pre>
+  <pre id="Chart-log"></pre>
+  <pre id="trenner-log-Chart.js731"></pre>
+  <pre id="Chart-log2"></pre>
+  <pre id="trenner-log-Chart.js17544"></pre>
+  <pre id="Chart-log3"></pre>
+
+  <script>
+    // Variablen für die Ausgabe der Ergebnisse im Browser
+    const d3TrennerLog = document.getElementById("trenner-log-d3");
+    const d3TrennerLog24 = document.getElementById("trenner-log-d324")
+    const d3TrennerLog731 = document.getElementById("trenner-log-d3731")
+    const d3TrennerLog17544 = document.getElementById("trenner-log-d317544")
+    const log = document.getElementById("d3-log");
+    const log2 = document.getElementById("d3-log2");
+    const log3 = document.getElementById("d3-log3");
+    const echartsTrennerLog = document.getElementById("trenner-log-ECharts");
+    const echartsTrennerLog24 = document.getElementById("trenner-log-ECharts24");
+    const echartsTrennerLog731 = document.getElementById("trenner-log-ECharts731");
+    const echartsTrennerLog17544 = document.getElementById("trenner-log-ECharts17544");
+    const echartsLog = document.getElementById("Echarts-log");
+    const echartsLog2 = document.getElementById("Echarts-log2");
+    const echartsLog3 = document.getElementById("Echarts-log3");
+    const chartTrennerLog = document.getElementById("trenner-log-Chart.js");
+    const chartTrennerLog24 = document.getElementById("trenner-log-Chart.js24");
+    const chartTrennerLog731 = document.getElementById("trenner-log-Chart.js731");
+    const chartTrennerLog17544 = document.getElementById("trenner-log-Chart.js17544");
+    const chartLog = document.getElementById("Chart-log");
+    const chartLog2 = document.getElementById("Chart-log2");
+    const chartLog3 = document.getElementById("Chart-log3");
+
+    // Variablen für den Benchmark
+    let runs = 5;
+    let currentRun = 0;
+    const chartTypeD3 = "D3.js"
+    const chartTypeEcharts = "ECharts.js"
+    const chartTypeChart = "Chart.js"
+
+    const windowOpen = `Messung-start-window`;
+    const windowClose = `Messung-end-window`;
+    const measureNameWindowHandler = `Messung-gesamt-windowHandler`
+
+    // Variablen um die Ergebnisse der posts zu speichern
+    const results24D3 = [];
+    const results731D3 = [];
+    const results17544D3 = [];
+    const results24Echarts = [];
+    const results731Echarts = [];
+    const results17544Echarts = [];
+    const results24Chart = [];
+    const results731Chart = [];
+    const results17544Chart = [];
+
+    document.getElementById("start").addEventListener('click', () => {
+      const runInput = document.getElementById("runCount");
+      const parsedRuns = parseInt(runInput.value);
+      if (isNaN(parsedRuns) || parsedRuns < 1 || parsedRuns > 100) {
+        runs = 1;
+      } else { runs = parsedRuns }
+
+      currentRun = 1;
+      results24D3.length = 0;
+      results731D3.length = 0;
+      results17544D3.length = 0;
+      results24Echarts.length = 0;
+      results731Echarts.length = 0;
+      results17544Echarts.length = 0;
+      results24Chart.length = 0;
+      results731Chart.length = 0;
+      results17544Chart.length = 0;
+      runBenchmark();
+    });
+// Diese Funktion ist mit Hilfe von KI entstanden
+    async function runBenchmark() {
+      if (currentRun > runs) {
+        d3TrennerLog.textContent = "++++++++++++++++++++ Messergebnisse für D3.js ++++++++++++++++++++"
+        d3TrennerLog24.textContent = "++++++++++++++++++++ Messung mit 24 Datenpunkten D3.js ++++++++++++++++++++"
+        log.textContent = JSON.stringify(results24D3, null, 2);
+        d3TrennerLog731.textContent = "++++++++++++++++++++ Messung mit 731 Datenpunkten D3.js ++++++++++++++++++++"
+        log2.textContent = JSON.stringify(results731D3, null, 2);
+        d3TrennerLog17544.textContent = "++++++++++++++++++++ Messung mit 17544 Datenpunkten D3.js ++++++++++++++++++++"
+        log3.textContent = JSON.stringify(results17544D3, null, 2);
+
+        echartsTrennerLog.textContent = "++++++++++++++++++++ Messergebnisse für ECharts.js ++++++++++++++++++++"
+        echartsTrennerLog24.textContent = "++++++++++++++++++++ Messung mit 24 Datenpunkten ECharts.js ++++++++++++++++++++"
+        echartsLog.textContent = JSON.stringify(results24Echarts, null, 2);
+        echartsTrennerLog731.textContent = "++++++++++++++++++++ Messung mit 731 Datenpunkten ECharts.js ++++++++++++++++++++"
+        echartsLog2.textContent = JSON.stringify(results731Echarts, null, 2);
+        echartsTrennerLog17544.textContent = "++++++++++++++++++++ Messung mit 17544 Datenpunkten ECharts.js ++++++++++++++++++++"
+        echartsLog3.textContent = JSON.stringify(results17544Echarts, null, 2);
+
+        chartTrennerLog.textContent = "++++++++++++++++++++ Messergebnisse für Chart.js ++++++++++++++++++++"
+        chartTrennerLog24.textContent = "++++++++++++++++++++ Messung mit 24 Datenpunkten Chart.js ++++++++++++++++++++"
+        chartLog.textContent = JSON.stringify(results24Chart, null, 2);
+        chartTrennerLog731.textContent = "++++++++++++++++++++ Messung mit 731 Datenpunkten Chart.js ++++++++++++++++++++"
+        chartLog2.textContent = JSON.stringify(results731Chart, null, 2);
+        chartTrennerLog17544.textContent = "++++++++++++++++++++ Messung mit 17544 Datenpunkten Chart.js ++++++++++++++++++++"
+        chartLog3.textContent = JSON.stringify(results17544Chart, null, 2);
+
+        drawBoxplotBenchmark(results24D3, results731D3, results17544D3, "boxplot-multirun-D3", chartTypeD3);
+        drawBoxplotBenchmark(results24Echarts, results731Echarts, results17544Echarts, "boxplot-multirun-ECharts", chartTypeEcharts);
+        drawBoxplotBenchmark(results24Chart, results731Chart, results17544Chart, "boxplot-multirun-Chart", chartTypeChart);
+        drawBoxplotBenchmarkRAM(results24D3, results731D3, results17544D3, "boxplot-multirun-Chart-RAM-Verbrauch-D3", chartTypeD3);
+        drawBoxplotBenchmarkRAM(results24Echarts, results731Echarts, results17544Echarts, "boxplot-multirun-Chart-RAM-Verbrauch-ECharts", chartTypeEcharts);
+        drawBoxplotBenchmarkRAM(results24Chart, results731Chart, results17544Chart, "boxplot-multirun-Chart-RAM-Verbrauch-Chart", chartTypeChart);
+        return;
+      }
+
+      const urlT1 = `time-series-d3-24dp.html?t=run${currentRun}`;
+      await windowHandler(urlT1, 'renderTime24', results24D3);
+      //await windowHandler('time-series-d3-24dp.html', 'renderTime24', results24D3);
+
+      const urlT2 = `time-series-d3-731dp.html?t=run${currentRun}`;
+      await windowHandler(urlT2, 'renderTime731', results731D3);
+      //await windowHandler('time-series-d3-731dp.html', 'renderTime731', results731D3);
+
+      const urlT3 = `time-series-d3-17544dp.html?t=run${currentRun}`;
+      await windowHandler(urlT3, 'renderTime17544', results17544D3);
+      //await windowHandler('time-series-d3-17544dp.html', 'renderTime17544', results17544D3);
+
+      const urlT4 = `time-series-echarts-24dp.html?t=run${currentRun}`;
+      await windowHandler(urlT4, 'renderTime24', results24Echarts);
+      //await windowHandler('time-series-echarts-24dp.html', 'renderTime24', results24Echarts);
+
+      const urlT5 = `time-series-echarts-731dp.html?t=run${currentRun}`;
+      await windowHandler(urlT5, 'renderTime731', results731Echarts);
+      //await windowHandler('time-series-echarts-731dp.html', 'renderTime731', results731Echarts);
+
+      const urlT6 = `time-series-echarts-17544dp.html?t=run${currentRun}`;
+      await windowHandler(urlT6, 'renderTime17544', results17544Echarts);
+      //await windowHandler('time-series-echarts-17544dp.html', 'renderTime17544', results17544Echarts);
+  
+      const urlT7 = `time-series-chart-24dp.html?t=run${currentRun}`;
+      await windowHandler(urlT7, 'renderTime24', results24Chart);
+      //await windowHandler('time-series-chart-24dp.html', 'renderTime24', results24Chart);
+   
+      const urlT8 = `time-series-chart-731dp.html?t=run${currentRun}`;
+      await windowHandler(urlT8, 'renderTime731', results731Chart);
+      //await windowHandler('time-series-chart-731dp.html', 'renderTime731', results731Chart);
+
+      const urlT9 = `time-series-chart-17544dp.html?t=run${currentRun}`;
+      await windowHandler(urlT9, 'renderTime17544', results17544Chart);
+      //await windowHandler('time-series-chart-17544dp.html', 'renderTime17544', results17544Chart);
+ 
+      currentRun++;
+      runBenchmark();
+    };
+// Diese Funktion ist mit Hilfe von KI entstanden
+    function windowHandler(url, messageType, resultArray) {
+      return new Promise((resolve, reject) => {
+        performance.mark(windowOpen);
+        const win = window.open(url, `run-${currentRun}`, `benchmark-run-${currentRun}`, "width=1200,height=1000,noopener,noreferrer");
+
+        const handler = (event) => {
+          if (event.data?.type === messageType) {
+            performance.mark(windowClose);
+            performance.measure(measureNameWindowHandler, windowOpen, windowClose);
+            const renderTimeNumber = parseFloat(event.data.payload.renderTimeGesamt);
+
+            const entry = performance.getEntriesByName(measureNameWindowHandler)[0]; //?.duration.toFixed(2);
+            const messungNoise = entry.duration;
+            const noise = messungNoise - renderTimeNumber;
+
+            resultArray.push({ run: currentRun, ...event.data.payload, overhead: noise.toFixed(2) + ' ms' });
+            window.removeEventListener('message', handler);
+
+            performance.clearMarks();
+            performance.clearMeasures();
+            setTimeout(() => {
+              win.close();
+              resolve();  // Fenster wurde geschlossen, Resultate wurden verarbeitet
+            }, 100);
+          }
+        };
+
+        window.addEventListener('message', handler);
+      });
+    };
+
+    //**********************************************
+    // Box-Plot Funktion für die Renderzeit
+    // Diese Funktion ist mit Hilfe von KI entstanden
+    //**********************************************
+    function drawBoxplotBenchmark(data24, data731, data17544, containerId, chartType) {
+      const renderTimes24 = data24.map(entry => parseFloat(entry.renderTime24)).filter(Number.isFinite);
+      const renderTimes731 = data731.map(entry => parseFloat(entry.renderTime731)).filter(Number.isFinite);
+      const renderTimes17544 = data17544.map(entry => parseFloat(entry.renderTime17544)).filter(Number.isFinite);
+
+      const dataArrays = [renderTimes24, renderTimes731, renderTimes17544];
+
+      // Manuelle Boxplot-Datenberechnung
+      const boxData = dataArrays.map(arr => {
+        const sorted = [...arr].sort((a, b) => a - b);
+        const q1 = quantile(sorted, 0.25);
+        const median = quantile(sorted, 0.5);
+        const q3 = quantile(sorted, 0.75);
+        const min = Math.min(...sorted);
+        const max = Math.max(...sorted);
+        return [min, q1, median, q3, max];
+      });
+
+      // Helper: Quantilberechnung
+      function quantile(arr, q) {
+        const pos = (arr.length - 1) * q;
+        const base = Math.floor(pos);
+        const rest = pos - base;
+        return arr[base + 1] !== undefined
+          ? arr[base] + rest * (arr[base + 1] - arr[base])
+          : arr[base];
+      }
+
+      const statsLabels = boxData.map((stats, index) => ({
+        text:
+          `min: ${stats[0].toFixed(2)} ms\n` +
+          `Q1: ${stats[1].toFixed(2)} ms\n` +
+          `Median: ${stats[2].toFixed(2)} ms\n` +
+          `Q3: ${stats[3].toFixed(2)} ms\n` +
+          `max: ${stats[4].toFixed(2)} ms`,
+        left: `${15 + index * 28}%`,
+        top: '88%',
+        textStyle: {
+          fontWeight: 'bold',
+          fontSize: 14,
+          lineHeight: 14,
+          color: '#000'
+        },
+        borderColor: '#999',
+        borderWidth: 1,
+        backgroundColor: '#fff',
+        padding: 8
+      }));
+
+      const chartDom = document.getElementById(containerId);
+      const myChart = echarts.init(chartDom);
+
+      const option = {
+        backgroundColor: '#EDEDED',
+        title: [
+          {
+            text: `Benchmark-Ergebnisse Time-Series-Chart-${chartType}-${runs}-Durchläufe-Renderzeit`,
+            left: 'center',
+            textStyle: {
+              fontSize: 18,
+              fontWeight: 'bold',
+              color: '#000'
+            }
+          },
+          ...statsLabels
+        ],
+        tooltip: {
+          trigger: 'item',
+          axisPointer: {
+            type: 'shadow'
+          }
+        },
+        grid: {
+          left: '10%',
+          right: '10%',
+          bottom: '15%'
+        },
+        xAxis: {
+          type: 'category',
+          data: ['24 Datenpunkte', '731 Datenpunkte', '17544 Datenpunkte'],
+          nameGap: 30,
+          axisLabel: {
+            fontSize: 14,
+            fontWeight: 'bold',
+            color: '#000'
+          },
+          nameTextStyle: {
+            fontSize: 14,
+            fontWeight: 'bold',
+            color: '#000'
+          },
+          axisLine: {
+            lineStyle: {
+              color: '#000'
+            }
+          },
+          splitArea: { show: false },
+          splitLine: { show: false }
+        },
+        yAxis: {
+          type: 'value',
+          name: 'Renderzeit in ms',
+          axisLabel: {
+            fontSize: 14,
+            fontWeight: 'bold',
+            color: '#000'
+          },
+          nameTextStyle: {
+            fontSize: 14,
+            fontWeight: 'bold',
+            color: '#000'
+          },
+          axisLine: {
+            lineStyle: {
+              color: '#000'
+            }
+          },
+          splitArea: { show: true }
+        },
+        series: [
+          {
+            name: 'boxplot',
+            type: 'boxplot',
+            data: boxData,
+            itemStyle: {
+              borderWidth: 2, // dickere Linien
+              opacity: 0.5 // transparenter Fülleffekt
+            },
+            label: {
+              show: true,
+              position: 'outside',
+              formatter: function (param) {
+                const stats = param.data;
+                return [
+                  `min: ${stats[0].toFixed(2)} ms`,
+                  `Q1: ${stats[1].toFixed(2)} ms`,
+                  `Median: ${stats[2].toFixed(2)} ms`,
+                  `Q3: ${stats[3].toFixed(2)} ms`,
+                  `max: ${stats[4].toFixed(2)} ms`
+                ].join('\n');
+              },
+              fontSize: 10,
+              color: '#333'
+            },
+            emphasis: {
+              label: {
+                show: true
+              }
+            }
+          }
+        ]
+      };
+
+      myChart.setOption(option);
+    }
+
+
+    //**********************************************
+    // Box-Plot Funktion für die RAM-Verbrauch
+    //**********************************************
+   // Diese Funktion ist mit Hilfe von KI entstanden
+    function drawBoxplotBenchmarkRAM(data24, data731, data17544, containerId, chartType) {
+      const RAM24 = data24.map(entry => parseFloat(entry.usedRAM)).filter(Number.isFinite);
+      const RAM731 = data731.map(entry => parseFloat(entry.usedRAM)).filter(Number.isFinite);
+      const RAM17544 = data17544.map(entry => parseFloat(entry.usedRAM)).filter(Number.isFinite);
+
+      function calculateBox(dataArray) {
+        const sorted = dataArray.slice().sort((a, b) => a - b);
+        const min = sorted[0];
+        const max = sorted[sorted.length - 1];
+        const q1 = quantile(sorted, 0.25);
+        const median = quantile(sorted, 0.5);
+        const q3 = quantile(sorted, 0.75);
+        return [min, q1, median, q3, max];
+      }
+
+      function quantile(sortedArr, q) {
+        const pos = (sortedArr.length - 1) * q;
+        const base = Math.floor(pos);
+        const rest = pos - base;
+        return sortedArr[base + 1] !== undefined
+          ? sortedArr[base] + rest * (sortedArr[base + 1] - sortedArr[base])
+          : sortedArr[base];
+      }
+
+      const boxData = [
+        calculateBox(RAM24),
+        calculateBox(RAM731),
+        calculateBox(RAM17544)
+      ];
+
+      const statsLabels = boxData.map((stats, index) => ({
+        text:
+          `min: ${stats[0].toFixed(2)} MB\n` +
+          `Q1: ${stats[1].toFixed(2)} MB\n` +
+          `Median: ${stats[2].toFixed(2)} MB\n` +
+          `Q3: ${stats[3].toFixed(2)} MB\n` +
+          `max: ${stats[4].toFixed(2)} MB`,
+        left: `${15 + index * 28}%`,
+        top: '88%',
+        textStyle: {
+          fontWeight: 'bold',
+          fontSize: 14,
+          lineHeight: 14,
+          color: '#000'
+        },
+        borderColor: '#999',
+        borderWidth: 1,
+        backgroundColor: '#fff',
+        padding: 8
+      }));
+
+      const chartDom = document.getElementById(containerId);
+      const myChart = echarts.init(chartDom);
+
+      const option = {
+        backgroundColor: '#EDEDED',
+        title: [
+          {
+            text: `Benchmark-Ergebnisse Time-Series-Chart-${chartType}-${runs}-Durchläufe-RAM-Verbrauch`,
+            left: 'center',
+            textStyle: {
+              fontSize: 18,
+              fontWeight: 'bold',
+              color: '#000'
+            }
+          },
+          ...statsLabels
+        ],
+        tooltip: {
+          trigger: 'item',
+          axisPointer: {
+            type: 'shadow'
+          }
+        },
+        grid: {
+          left: '10%',
+          right: '10%',
+          bottom: '15%'
+        },
+        xAxis: {
+          type: 'category',
+          data: ['24 Datenpunkte', '731 Datenpunkte', '17544 Datenpunkte'],
+          nameGap: 30,
+          axisLabel: {
+            fontSize: 14,
+            fontWeight: 'bold',
+            color: '#000'
+          },
+          nameTextStyle: {
+            fontSize: 14,
+            fontWeight: 'bold',
+            color: '#000'
+          },
+          axisLine: {
+            lineStyle: {
+              color: '#000'
+            }
+          },
+          splitArea: { show: false },
+          splitLine: { show: false }
+        },
+        yAxis: {
+          type: 'value',
+          name: 'RAM-Verbrauch in MB',
+          axisLabel: {
+            fontSize: 14,
+            fontWeight: 'bold',
+            color: '#000'
+          },
+          nameTextStyle: {
+            fontSize: 14,
+            fontWeight: 'bold',
+            color: '#000'
+          },
+          axisLine: {
+            lineStyle: {
+              color: '#000'
+            }
+          },
+          splitArea: { show: true }
+        },
+        series: [
+          {
+            name: 'boxplot',
+            type: 'boxplot',
+            data: boxData,
+            itemStyle: {
+              borderWidth: 2, // dickere Linien
+              opacity: 0.5 // transparenter Fülleffekt
+            },
+            label: {
+              show: true,
+              position: 'outside',
+              formatter: function (param) {
+                const stats = param.data;
+                return [
+                  `min: ${stats[0].toFixed(2)} ms`,
+                  `Q1: ${stats[1].toFixed(2)} ms`,
+                  `Median: ${stats[2].toFixed(2)} ms`,
+                  `Q3: ${stats[3].toFixed(2)} ms`,
+                  `max: ${stats[4].toFixed(2)} ms`
+                ].join('\n');
+              },
+              fontSize: 10,
+              color: '#333'
+            },
+            emphasis: {
+              label: {
+                show: true
+              }
+            }
+          }]
+      };
+
+      myChart.setOption(option);
+    }
+
+
+    function formatDate(dateInput) {
+      const date = new Date(dateInput);
+
+      const localDate = date.toLocaleString('de-DE', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
+
+      return localDate;
+    }
+
+    document.getElementById("download").addEventListener("click", () => {
+      const now = new Date();
+      const formated = formatDate(now);
+
+      const benchmarks = [
+        { name: "messdaten-Time-Series-Chart-24d3", data: results24D3 },
+        { name: "messdaten-Time-Series-Chart-731d3", data: results731D3 },
+        { name: "messdaten-Time-Series-Chart-17544d3", data: results17544D3 },
+        { name: "messdaten-Time-Series-Chart-24echarts", data: results24Echarts },
+        { name: "messdaten-Time-Series-Chart-731echarts", data: results731Echarts },
+        { name: "messdaten-Time-Series-Chart-17544echarts", data: results17544Echarts },
+        { name: "messdaten-Time-Series-Chart-24chart.js", data: results24Chart },
+        { name: "messdaten-Time-Series-Chart-731chart.js", data: results731Chart },
+        { name: "messdaten-Time-Series-Chart-17544chart.js", data: results17544Chart },
+      ]
+
+      benchmarks.forEach(({ name, data }) => {
+        const blobContent = {
+          title: name,
+          runCount: runs,
+          timestamp: formated,
+          data: data
+        };
+
+        const blob = new Blob([JSON.stringify(blobContent, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+
+
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${name}-${formated}-${runs}-Durchläufe.json`;
+        a.click();
+
+        URL.revokeObjectURL(url);
+      });
+    });
+
+  </script>
+
+</body>
+
+</html>

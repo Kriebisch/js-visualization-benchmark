@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="de-DE">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bar Chart Chart.js</title>
+    <link rel="stylesheet" href="../style.css" />
+    <script src="./lib/papaparse.min.js"></script>
+    <script src="./lib/d3.js"></script>
+
+</head>
+
+<body>
+    <h1>Benchmark D3.js Time-Series Verbrechen pro Monat (24 Datenpunkte)</h1>
+
+    <div id="chart" class="chart-container">
+        <div id="time-series-d3js" class="chartDiv"></div>
+        <br>
+        <div id="perfDivGesamt"></div>
+        <br><br>
+        <div id="perfDivGetData"></div>
+        <br><br>
+        <div id="perfDivProcessingData"></div>
+        <br><br>
+        <div id="perfDiv"></div>
+    </div>
+    <script>
+
+        const benchmarkResults = {
+            timestamp: null,
+            renderTimeGesamt: null,
+            messungTimeGetData: null,
+            messungTimeProcessingData: null,
+            renderTime24: null,
+            usedRAM: null,
+        }
+
+        function formatDate(dateInput) {
+            const date = new Date(dateInput);
+
+            const localDate = date.toLocaleString('de-DE', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+
+            return localDate;
+        }
+
+        // Deklarationen der einzelnen Messpunkte
+        const startMarkGesamt = `Messung-start-gesamt`;
+        const endMarkGesamt = `Messung-end-gesamt`;
+        const measureNameGesamt = `Messung-render-gesamt`;
+
+        const startGetData = `Messung-start-getData`;
+        const endGetData = `Messung-end-getData`;
+        const measureNameGetData = `Messung-gesamt-getData`
+        /*
+        const startProcessingData = `Messung-start-processingData`;
+        const endProcessingData = `Messung-end-processingData`;
+        const measureNameProcessingData = `Messung-gesamt-processingData`
+        */
+
+        localStorage.clear();
+        sessionStorage.clear();
+        if ('caches' in window) {
+            caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+        }
+
+        performance.mark(startMarkGesamt);
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            let newTimeStamp = new Date()
+            benchmarkResults.timestamp = formatDate(newTimeStamp);
+
+            let cachedDataWithArrest;
+            let cachedDataWithoutArrest
+
+            async function getDataWithArrest() {
+                if (cachedDataWithArrest) return cachedDataWithArrest;
+
+                const response = await fetch('http://127.0.0.1:8080//withArrest-monthly.json');
+                cachedDataWithArrest = await response.json();
+                return cachedDataWithArrest;
+
+            }
+
+            async function getDataWithoutArrest() {
+                if (cachedDataWithoutArrest) return cachedDataWithoutArrest;
+
+                const response = await fetch('http://127.0.0.1:8080//withoutArrest-monthly.json');
+                cachedDataWithoutArrest = await response.json();
+                return cachedDataWithoutArrest;
+
+            }
+
+            // Vorbereiten der Daten für den Chart
+            performance.mark(startGetData);
+            const dataWithArrest = await getDataWithArrest();
+            const dataWithoutArrest = await getDataWithoutArrest();
+            performance.mark(endGetData);
+
+
+            console.log(dataWithArrest);
+            console.log(dataWithoutArrest);
+
+            /*
+            performance.mark(startProcessingData);
+
+            performance.mark(endProcessingData);
+            */
+
+            // Vorbereiten der Variablen zum Zeichnen des Charts
+            const chartId = 'time-series-d3js';
+            const chartClassname = 'chartDiv'
+            const containerId = 'chart';
+            const container = document.getElementById(chartId);
+
+            const perfDiv = document.getElementById('perfDiv');
+            const perfDivProcessingData = document.getElementById('perfDivProcessingData');
+            const perfDivGetData = document.getElementById('perfDivGetData');
+            const perfDivGesamt = document.getElementById('perfDivGesamt');
+
+
+            // Draw-Funktion für den Bar-Chart
+            // Diese Funktion ist mit Hilfe von KI entstanden
+            function drawLineChart(dataWithArrest, dataWithoutArrest) {
+                return new Promise(resolve => {
+                    const startMark = `${chartId}-start`;
+                    const endMark = `${chartId}-end`;
+                    const measureName = `${chartId}-render`;
+
+                    performance.mark(startMark);
+
+                    const margin = { top: 30, right: 20, bottom: 80, left: 60 };
+                    const width = 800 - margin.left - margin.right;
+                    const height = 600 - margin.top - margin.bottom;
+
+                    // x- und y-Skalen
+                    const x = d3.scalePoint()
+                        .domain(dataWithArrest.map(d => d.date))
+                        .range([0, width]);
+
+                    const maxY = d3.max([
+                        d3.max(dataWithArrest, d => d.value),
+                        d3.max(dataWithoutArrest, d => d.value)
+                    ]);
+
+                    const y = d3.scaleLinear()
+                        .domain([0, maxY])
+                        .nice()
+                        .range([height, 0]);
+
+                    const svg = d3.select("#time-series-d3js")
+                        .html("")
+                        .append("svg")
+                        .attr("width", width + margin.left + margin.right)
+                        .attr("height", height + margin.top + margin.bottom)
+                        .append("g")
+                        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+                    svg.append('text')
+                        .attr('x', width / 2)
+                        .attr('y', 30)  // etwas Abstand nach unten
+                        .attr('text-anchor', 'middle') // zentrieren
+                        .style('font-size', '15px')
+                        .style('font-weight', 'bold')
+                        .text('Anzahl Verbrechen pro Monat');
+
+                    // X-Achse mit Tick-Anpassung (jeden 3. Tick)
+                    const tickValues = dataWithArrest
+                        .map(d => d.date)
+                        .filter((d, i) => i % 1 === 0);
+
+                    svg.append("g")
+                        .attr("transform", `translate(0,${height})`)
+                        .call(d3.axisBottom(x).tickValues(tickValues))
+                        .selectAll("text")
+                        .attr("transform", "rotate(45)")
+                        .style("text-anchor", "start");
+
+                    // Y-Achse
+                    svg.append("g")
+                        .call(d3.axisLeft(y));
+
+                    // Linie definieren
+                    const line = d3.line()
+                        .x(d => x(d.date))
+                        .y(d => y(d.value));
+
+                    // Linie 1: withArrest (Blau)
+                    svg.append("path")
+                        .datum(dataWithArrest)
+                        .attr("fill", "none")
+                        .attr("stroke", "#007bff")
+                        .attr("stroke-width", 2)
+                        .attr("d", line);
+
+                    // Punkte Linie 1
+                    svg.selectAll("circle.withArrest")
+                        .data(dataWithArrest)
+                        .enter()
+                        .append("circle")
+                        .attr("class", "withArrest")
+                        .attr("cx", d => x(d.date))
+                        .attr("cy", d => y(d.value))
+                        .attr("r", 3)
+                        .attr("fill", "#007bff");
+
+                    // Linie 2: withoutArrest (Rot)
+                    svg.append("path")
+                        .datum(dataWithoutArrest)
+                        .attr("fill", "none")
+                        .attr("stroke", "red")
+                        .attr("stroke-width", 2)
+                        .attr("d", line);
+
+                    // Punkte Linie 2
+                    svg.selectAll("circle.withoutArrest")
+                        .data(dataWithoutArrest)
+                        .enter()
+                        .append("circle")
+                        .attr("class", "withoutArrest")
+                        .attr("cx", d => x(d.date))
+                        .attr("cy", d => y(d.value))
+                        .attr("r", 3)
+                        .attr("fill", "red");
+
+                    // Legende hinzufügen
+                    const legend = svg.append("g")
+                        .attr("transform", `translate(${width - 400}, 10)`);
+
+
+                    legend.append("rect")
+                        .attr("width", 140)
+                        .attr("height", 50)
+                        .attr("fill", "white")
+                        .attr("stroke", "black")
+                        .attr("stroke-width", 1);
+
+                    legend.append("circle")
+                        .attr("cx", 15)
+                        .attr("cy", 15)
+                        .attr("r", 6)
+                        .attr("fill", "#007bff");
+
+                    legend.append("text")
+                        .attr("x", 30)
+                        .attr("y", 15)
+                        .text("with Arrest")
+                        .style("font-size", "14px")
+                        .attr("alignment-baseline", "middle");
+
+                    legend.append("circle")
+                        .attr("cx", 15)
+                        .attr("cy", 35)
+                        .attr("r", 6)
+                        .attr("fill", "red");
+
+                    legend.append("text")
+                        .attr("x", 30)
+                        .attr("y", 38)
+                        .text("without Arrest")
+                        .style("font-size", "14px")
+                        .attr("alignment-baseline", "middle");
+
+
+
+                    // Performance-Messung beenden 
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            performance.mark(endMark);
+                            performance.measure(measureName, startMark, endMark);
+
+                            const renderTime24 = performance.getEntriesByName(measureName)[0]?.duration.toFixed(2);
+
+                            benchmarkResults.renderTime24 = renderTime24 + " ms";
+
+                            performance.clearMarks(startMark);
+                            performance.clearMarks(endMark);
+                            performance.clearMeasures(measureName);
+
+                            resolve();
+                            return renderTime24
+                        });
+                    });
+                });
+            }
+
+            if (performance.memory) {
+                if (window.gc) window.gc(); // Garbage Collector auslösen
+            }
+
+            const heapBefore = performance.memory.usedJSHeapSize;
+
+            let heapAfter;
+
+            await drawLineChart(dataWithArrest, dataWithoutArrest);  // Aufruf der Drawfunktion
+
+            heapAfter = performance.memory.usedJSHeapSize;
+
+            const usedRAM = heapAfter - heapBefore;
+            const ramToMB = (usedRAM / (1024 * 1024)).toFixed(2);
+
+            benchmarkResults.usedRAM = ramToMB + " MB";
+
+            performance.mark(endMarkGesamt);
+            performance.measure(measureNameGesamt, startMarkGesamt, endMarkGesamt);
+            performance.measure(measureNameGetData, startGetData, endGetData);
+
+            const messungTimeGetData = performance.getEntriesByName(measureNameGetData)[0]?.duration.toFixed(2);
+            const messungTimeProcessingData = 0
+            const renderTimeGesamt = performance.getEntriesByName(measureNameGesamt)[0]?.duration.toFixed(2);
+
+
+            performance.clearMarks();
+            performance.clearMeasures();
+
+            perfDiv.textContent = `Renderzeit des Diagramms: ${benchmarkResults.renderTime24}`;
+            perfDivGesamt.textContent = `Messergebnis des gesamten Rechenprozesses: ${renderTimeGesamt} ms`;
+            perfDivGetData.textContent = `Messergebnis des Parsvorgangs + Fetch: ${messungTimeGetData} ms`;
+            perfDivProcessingData.textContent = `Messergebnis der Datenaufbereitung: 0 ms`;
+
+            benchmarkResults.renderTimeGesamt = renderTimeGesamt + " ms";
+            benchmarkResults.messungTimeGetData = messungTimeGetData + " ms";
+            benchmarkResults.messungTimeProcessingData = 0 + " ms"
+
+            window.opener?.postMessage({
+                type: 'renderTime24',
+                payload: benchmarkResults
+            }, '*');
+        });
+    </script>
+
+
+</body>
+
+</html>

@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="de-DE">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Time-Series-Chart ECharts.js</title>
+    <link rel="stylesheet" href="../style.css" />
+    <script src="./lib/echarts.js"></script>
+
+</head>
+
+<body>
+    <h1>Gegenüberstellung aller Messergebnisse</h1>
+
+    <div id="chart" class="chart-container">
+        <div id="vergleichs-box-plot-Bar-Chart" class="chartDivBoxplotVergleich"></div>
+        <br>
+        <div id="vergleichs-box-plot-Scatter-Chart" class="chartDivBoxplotVergleich"></div>
+        <br>
+        <div id="vergleichs-box-plot-Time-Chart" class="chartDivBoxplotVergleich"></div>
+    </div>
+    <script>
+
+        let cachedData;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const dataBarD310 = "Messdaten-Barchart-10-Datenpunkte-d3.js-06.08.2025, 22_14_23-100-Durchläufe.json"
+            const dataBarEcharts10 = "Messdaten-Barchart-10-Datenpunkte-ECharts.js-06.08.2025, 22_14_23-100-Durchläufe.json"
+            const dataBarChart10 = "Messdaten-Barchart-10-Datenpunkte-Chart.js-06.08.2025, 22_14_23-100-Durchläufe.json"
+            const dataBarD3100 = "Messdaten-Barchart-100-Datenpunkte-d3.js-06.08.2025, 22_14_23-100-Durchläufe.json"
+            const dataBarEcharts100 = "Messdaten-Barchart-100-Datenpunkte-ECharts.js-06.08.2025, 22_14_23-100-Durchläufe.json"
+            const dataBarChart100 = "Messdaten-Barchart-100-Datenpunkte-Chart.js-06.08.2025, 22_14_23-100-Durchläufe.json"
+            const dataBarD31000 = "Messdaten-Barchart-1000-Datenpunkte-d3.js-06.08.2025, 22_14_23-100-Durchläufe.json"
+            const dataBarEcharts1000 = "Messdaten-Barchart-1000-Datenpunkte-ECharts.js-06.08.2025, 22_14_23-100-Durchläufe.json"
+            const dataBarChart1000 = "Messdaten-Barchart-1000-Datenpunkte-Chart.js-06.08.2025, 22_14_23-100-Durchläufe.json"
+
+            const dataScatterD31000 = "messdaten-scatter-1000d3-06.08.2025, 21_03_39-100-Durchläufe.json"
+            const dataScatterEcharts1000 = "messdaten-scatter-1000echarts-06.08.2025, 21_03_39-100-Durchläufe.json"
+            const dataScatterChart1000 = "messdaten-scatter-1000chart.js-06.08.2025, 21_03_39-100-Durchläufe.json"
+            const dataScatterD310000 = "messdaten-scatter-10000d3-06.08.2025, 21_03_39-100-Durchläufe.json"
+            const dataScatterEcharts10000 = "messdaten-scatter-10000echarts-06.08.2025, 21_03_39-100-Durchläufe.json"
+            const dataScatterChart10000 = "messdaten-scatter-10000chart.js-06.08.2025, 21_03_39-100-Durchläufe.json"
+            const dataScatterD3100000 = "messdaten-scatter-100000d3-06.08.2025, 21_03_39-100-Durchläufe.json"
+            const dataScatterEcharts100000 = "scatter-100000-Datenpunkte-echarts.js-100-Durchläufe.json"
+            const dataScatterChart100000 = "messdaten-scatter-100000chart.js-06.08.2025, 21_03_39-100-Durchläufe.json"
+
+            const dataTimeD324 = "messdaten-Time-Series-Chart-24d3-07.08.2025, 00_21_16-100-Durchläufe.json"
+            const dataTimeEcharts24 = "messdaten-Time-Series-Chart-24echarts-07.08.2025, 00_21_16-100-Durchläufe.json"
+            const dataTimeChart24 = "messdaten-Time-Series-Chart-24chart.js-07.08.2025, 00_21_16-100-Durchläufe.json"
+            const dataTimeD3731 = "messdaten-Time-Series-Chart-731d3-07.08.2025, 00_21_16-100-Durchläufe.json"
+            const dataTimeEcharts731 = "messdaten-Time-Series-Chart-731echarts-07.08.2025, 00_21_16-100-Durchläufe.json"
+            const dataTimeChart731 = "messdaten-Time-Series-Chart-731chart.js-07.08.2025, 00_21_16-100-Durchläufe.json"
+            const dataTimeD317544 = "messdaten-Time-Series-Chart-17544d3-07.08.2025, 00_21_16-100-Durchläufe.json"
+            const dataTimeEcharts17544 = "messdaten-Time-Series-Chart-17544echarts-07.08.2025, 00_21_16-100-Durchläufe.json"
+            const dataTimeChart17544 = "messdaten-Time-Series-Chart-17544chart.js-07.08.2025, 00_21_16-100-Durchläufe.json"
+
+
+            // Diese Funktion ist mit Hilfe von KI entstanden
+            async function getJsonAndMap(data) {
+
+
+                const response = await fetch(`http://127.0.0.1:8080//${data}`);
+                cachedData = await response.json();
+                const renderTime = cachedData.data.map(entry => {
+                    const key = Object.keys(entry).find(k => k.startsWith("renderTime") && k !== "renderTimeGesamt");
+                    return parseFloat(entry[key]);
+
+                });
+
+                return renderTime;
+            }
+
+
+            const valuesBarD310 = await getJsonAndMap(dataBarD310)
+            const valuesBarD3100 = await getJsonAndMap(dataBarD3100)
+            const valuesBarD31000 = await getJsonAndMap(dataBarD31000)
+
+            const valuesBarEcharts10 = await getJsonAndMap(dataBarEcharts10)
+            const valuesBarEcharts100 = await getJsonAndMap(dataBarEcharts100)
+            const valuesBarEcharts1000 = await getJsonAndMap(dataBarEcharts1000)
+
+            const valuesBarChart10 = await getJsonAndMap(dataBarChart10)
+            const valuesBarChart100 = await getJsonAndMap(dataBarChart100)
+            const valuesBarChart1000 = await getJsonAndMap(dataBarChart1000)
+
+            const barData = [
+                valuesBarD310, valuesBarEcharts10, valuesBarChart10,
+                valuesBarD3100, valuesBarEcharts100, valuesBarChart100,
+                valuesBarD31000, valuesBarEcharts1000, valuesBarChart1000
+            ];
+            const barLabels = [
+                'D3-10', 'ECharts-10', 'Chart.js-10',
+                'D3-100', 'ECharts-100', 'Chart.js-100',
+                'D3-1000', 'ECharts-1000', 'Chart.js-1000'
+            ];
+
+
+            const valuesScatterD31000 = await getJsonAndMap(dataScatterD31000)
+            const valuesScatterD310000 = await getJsonAndMap(dataScatterD310000)
+            const valuesScatterD3100000 = await getJsonAndMap(dataScatterD3100000)
+
+            const valuesScatterEcharts1000 = await getJsonAndMap(dataScatterEcharts1000)
+            const valuesScatterEcharts10000 = await getJsonAndMap(dataScatterEcharts10000)
+            const valuesScatterEcharts100000 = await getJsonAndMap(dataScatterEcharts100000)
+
+            const valuesScatterChart1000 = await getJsonAndMap(dataScatterChart1000)
+            const valuesScatterChart10000 = await getJsonAndMap(dataScatterChart10000)
+            const valuesScatterChart100000 = await getJsonAndMap(dataScatterChart100000)
+
+            const scatterData = [
+                valuesScatterD31000, valuesScatterEcharts1000, valuesScatterChart1000,
+                valuesScatterD310000, valuesScatterEcharts10000, valuesScatterChart10000,
+                valuesScatterD3100000, valuesScatterEcharts100000, valuesScatterChart100000
+            ];
+            const scatterLabels = [
+                'D3-1000', 'ECharts-1000', 'Chart.js-1000',
+                'D3-10000', 'ECharts-10000', 'Chart.js-10000',
+                'D3-100000', 'ECharts-100000', 'Chart.js-100000'
+            ];
+
+            const valuesTimeD324 = await getJsonAndMap(dataTimeD324)
+            const valuesTimeD3731 = await getJsonAndMap(dataTimeD3731)
+            const valuesTimeD317544 = await getJsonAndMap(dataTimeD317544)
+
+            const valuesTimeEcharts24 = await getJsonAndMap(dataTimeEcharts24)
+            const valuesTimeEcharts731 = await getJsonAndMap(dataTimeEcharts731)
+            const valuesTimeEcharts17544 = await getJsonAndMap(dataTimeEcharts17544)
+
+            const valuesTimeChart24 = await getJsonAndMap(dataTimeChart24)
+            const valuesTimeChart731 = await getJsonAndMap(dataTimeChart731)
+            const valuesTimeChart17544 = await getJsonAndMap(dataTimeChart17544)
+
+            const timeData = [
+                valuesTimeD324, valuesTimeEcharts24, valuesTimeChart24,
+                valuesTimeD3731, valuesTimeEcharts731, valuesTimeChart731,
+                valuesTimeD317544, valuesTimeEcharts17544, valuesTimeChart17544
+            ];
+            const timeLabels = [
+                'D3-24', 'ECharts-24', 'Chart.js-24',
+                'D3-731', 'ECharts-731', 'Chart.js-731',
+                'D3-17k', 'ECharts-17k', 'Chart.js-17k'
+            ];
+
+            // Diese Funktion ist mit Hilfe von KI entstanden
+            function drawVergleichBoxplotForBenchmark(dataGroups, categories, containerId, chartType) {
+
+                const chartDom = document.getElementById(containerId);
+                const myChart = echarts.init(chartDom);
+
+                // Berechnung: min/max inklusive Ausreißer für jede Datenreihe
+                const boxDataRaw = dataGroups.map(arr => {
+                    const sorted = arr.filter(Number.isFinite).sort((a, b) => a - b);
+                    const q1 = quantile(sorted, 0.25);
+                    const median = quantile(sorted, 0.5);
+                    const q3 = quantile(sorted, 0.75);
+                    const min = Math.min(...sorted);
+                    const max = Math.max(...sorted);
+                    return [min, q1, median, q3, max];
+                });
+
+                function quantile(arr, q) {
+                    const pos = (arr.length - 1) * q;
+                    const base = Math.floor(pos);
+                    const rest = pos - base;
+                    if (arr[base + 1] !== undefined) {
+                        return arr[base] + rest * (arr[base + 1] - arr[base]);
+                    } else {
+                        return arr[base];
+                    }
+                }
+
+                // Farben: Rot, Blau, Grün
+                const colors = ['#e74c3c', '#3498db', '#2ecc71'];
+
+                // Jede Box individuell einfärben
+                const boxData = boxDataRaw.map((data, index) => ({
+                    value: data,
+                    itemStyle: {
+                        borderWidth: 2,
+                        borderColor: colors[index % colors.length],
+                        color: colors[index % colors.length],
+                        opacity: 0.4
+                    },
+                }));
+
+                const option = {
+                    backgroundColor: '#EEE8CD',
+                    title: {
+                        text: `Benchmark-Ergebnisse ${chartType} Renderzeit 100 Durchläufe`,
+                        left: 'center',
+                        textStyle: {
+                            fontSize: 18,
+                            fontWeight: 'bold',
+                            color: '#000'
+                        }
+                    },
+                    tooltip: {
+                        trigger: 'item',
+                        axisPointer: { type: 'shadow' },
+                        formatter: function (params) {
+                            if (params.seriesType === 'boxplot') {
+                                const d = params.data.value;
+                                return [
+                                    `min: ${d[0].toFixed(2)} ms`,
+                                    `Q1: ${d[1].toFixed(2)} ms`,
+                                    `Median: ${d[2].toFixed(2)} ms`,
+                                    `Q3: ${d[3].toFixed(2)} ms`,
+                                    `max: ${d[4].toFixed(2)} ms`
+                                ].join('<br>');
+                            }
+                        }
+                    },
+                    grid: {
+                        left: '10%',
+                        right: '10%',
+                        bottom: '20%'
+                    },
+                    xAxis: {
+                        type: 'category',
+                        data: categories,
+                        name: 'Bibliothek\nDatapoints',
+                        nameTextStyle: {
+                            fontWeight: 'bold',
+                            fontSize: 14,
+                            color: '#000'
+                        },
+                        axisLabel: {
+                            fontSize: 14,
+                            fontWeight: 'bold',
+                            color: '#000',
+                            rotate: 45
+                        },
+                        axisLine: {
+                            lineStyle: { color: '#1A1A1A' }
+                        }
+                    },
+                    yAxis: {
+                        type: 'log',
+                        name: 'Renderzeit (log 4 / ms)',
+                        logBase: 4,
+                        minorSplitLine: {
+                            show: true
+                        },
+                        nameTextStyle: {
+                            fontWeight: 'bold',
+                            fontSize: 14,
+                            color: '#000'
+                        },
+                        axisLabel: {
+                            fontSize: 14,
+                            fontWeight: 'bold',
+                            color: '#000'
+                        },
+                        axisLine: {
+                            lineStyle: { color: '#1A1A1A' }
+                        }
+                    },
+                    series: [
+                        {
+                            name: 'Boxplot',
+                            type: 'boxplot',
+                            data: boxData,
+                            label: {
+                                show: true,
+                                position: 'outside',
+                                formatter: function (param) {
+                                    const d = param.data.value;
+                                    return [
+                                        `min: ${d[0].toFixed(2)} ms`,
+                                        `Q1: ${d[1].toFixed(2)} ms`,
+                                        `Median: ${d[2].toFixed(2)} ms`,
+                                        `Q3: ${d[3].toFixed(2)} ms`,
+                                        `max: ${d[4].toFixed(2)} ms`
+                                    ].join('\n');
+                                },
+                                fontSize: 12,
+                                color: '#333',
+                            },
+                            emphasis: {
+                                label: {
+                                    show: true
+                                }
+                            }
+                        }
+                    ]
+                };
+
+                myChart.setOption(option);
+
+            }
+
+            drawVergleichBoxplotForBenchmark(barData, barLabels, 'vergleichs-box-plot-Bar-Chart', 'Bar Chart');
+            drawVergleichBoxplotForBenchmark(scatterData, scatterLabels, 'vergleichs-box-plot-Scatter-Chart', 'Scatter Chart');
+            drawVergleichBoxplotForBenchmark(timeData, timeLabels, 'vergleichs-box-plot-Time-Chart', 'Time-Series Chart');
+        });
+
+
+
+
+    </script>
+
+
+</body>
+
+</html>

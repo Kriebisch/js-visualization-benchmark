@@ -1,0 +1,72 @@
+body { 
+    
+    font-family: sans-serif; 
+    padding: 1rem; 
+}
+    
+.chart-container { margin: 2rem 0; }
+
+
+
+
+
+/* Allgemeines Layout für alle Charts */
+.chartDiv {
+    width: 800px;
+    height: 600px;
+    margin-top: 4rem;
+    border: 1px solid #ddd;
+    background-color: #f9f9f9;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  }
+
+  .chartDivBoxplot {
+    width: 800px;
+    height: 800px;
+    margin-top: 4rem;
+    border: 1px solid #ddd;
+    background-color: #f9f9f9;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  }
+
+   .chartDivBoxplotVergleich {
+    width: 1000px;
+    height: 1000px;
+    margin-top: 4rem;
+    border: 1px solid #ddd;
+    background-color: #f9f9f9;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  }
+
+  .chartCanvas {
+    min-width: 800px;
+    min-height: 600px;
+    max-width: 800px;
+    max-height: 600px;
+    margin-top: 4rem;
+    border: 1px solid #ddd;
+    background-color: #f9f9f9;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  }
+  
+
+  
+  
+  /* Liste unter dem Top 10 Block */
+  #output ul {
+    padding-left: 1rem;
+  }
+  #output li {
+    margin-bottom: 0.3rem;
+    font-family: sans-serif;
+  }
+
+  .perfDiv {
+    margin-Top: 1rem;
+    font-family: monospace;
+    font-size: 14px;
+  }

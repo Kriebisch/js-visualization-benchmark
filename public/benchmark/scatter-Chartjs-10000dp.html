@@ -1,0 +1,289 @@
+
+<!DOCTYPE html>
+<html lang="de-DE">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Scatter Chart Chart.js</title>
+    <link rel="stylesheet" href="../style.css" />
+    <script src="./lib/papaparse.min.js"></script>
+    <script src="./lib/chart.js"></script>
+</head>
+
+<body>
+    <h1>Benchmark Chart.js Scatterchart 10000 Datenpunkte</h1>
+
+    <div id="chart" class="chart-container">
+        <canvas id="scatter-chartjs" class="chartDiv"></canvas>
+        <br>
+        <div id="perfDivGesamt"></div>
+        <br><br>
+        <div id="perfDivGetData"></div>
+        <br><br>
+        <div id="perfDivProcessingData"></div>
+        <br><br>
+        <div id="perfDiv"></div>
+    </div>
+    <script>
+
+        const benchmarkResults = {
+            timestamp: null,
+            renderTimeGesamt: null,
+            messungTimeGetData: null,
+            messungTimeProcessingData: null,
+            renderTime10000: null,
+            usedRAM: null,
+        }
+
+        function formatDate(dateInput) {
+            const date = new Date(dateInput);
+
+            const localDate = date.toLocaleString('de-DE', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+
+            return localDate;
+        }
+
+        // Deklarationen der einzelnen Messpunkte
+        const startMarkGesamt = `Messung-start-gesamt`;
+        const endMarkGesamt = `Meddung-end-gesamt`;
+        const measureNameGesamt = `Messung-render-gesamt`;
+
+        const startGetData = `Messung-start-getData`;
+        const endGetData = `Messung-end-getData`;
+        const measureNameGetData = `Messung-gesamt-getData`;
+
+        const startProcessingData = `Messung-start-processingData`;
+        const endProcessingData = `Messung-end-processingData`;
+        const measureNameProcessingData = `Messung-gesamt-processingData`;
+
+        localStorage.clear();
+        sessionStorage.clear();
+        if ('caches' in window) {
+            caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+        }
+
+        performance.mark(startMarkGesamt);
+
+        const count100 = 10000;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            let newTimeStamp = new Date()
+            benchmarkResults.timestamp = formatDate(newTimeStamp);
+
+            let cachedData;
+
+            async function getData() {
+
+                if (cachedData) return cachedData;
+
+                return new Promise((resolve, reject) => {
+                    Papa.parse('http://127.0.0.1:8080/Crimes-01_2023-12_2024.csv', {
+                        download: true,
+                        header: true,
+                        complete: (results) => {
+                            cachedData = results.data;
+                            resolve(cachedData);
+                        },
+                        error: reject
+                    });
+                });
+
+            }
+
+            // Vorbereiten der Daten für den Chart
+            function mapToLatLng(data) {
+                return data
+                    .map(d => ({
+                        latitude: parseFloat(d["Latitude"]),
+                        longitude: parseFloat(d["Longitude"])
+                    }))
+                    .filter(d => !isNaN(d.latitude) && !isNaN(d.longitude));
+            }
+
+            function sliceScatterData(data, count) {
+                return data.slice(0, count);
+            }
+
+            function formatForChartJsScatter(objectArray, xKey = 'longitude', yKey = 'latitude') {
+                return objectArray.map(d => ({ x: d[xKey], y: d[yKey] }));
+            }
+
+            // Funktion um minimal und maximale Werte für Skala zu ermitteln        
+            function getBoundsChart(data) {
+                const longitudes = data.map(d => d.x);
+                const latitudes = data.map(d => d.y);
+
+                return {
+                    xMin: longitudes.reduce((a, b) => Math.min(a, b), Infinity),
+                    xMax: longitudes.reduce((a, b) => Math.max(a, b), -Infinity),
+                    yMin: latitudes.reduce((a, b) => Math.min(a, b), Infinity),
+                    yMax: latitudes.reduce((a, b) => Math.max(a, b), -Infinity)
+                };
+
+            }
+
+            performance.mark(startGetData);
+            const data = await getData();  // fetchen und Parsen der Daten
+            performance.mark(endGetData);
+
+            performance.mark(startProcessingData);
+            const scatterData = mapToLatLng(data);
+            const sample100 = sliceScatterData(scatterData, count100); // Aufbereiten der Daten für den Chart
+            const formatedSample = formatForChartJsScatter(sample100)
+            const bounds = getBoundsChart(formatedSample)
+            performance.mark(endProcessingData);
+
+
+            // Vorbereiten der Variablen zum Zeichnen des Charts
+            const chartId = 'scatter-chartjs';
+            const chartClassname = 'chartCanvas'
+            const containerId = 'chart';
+            const container = document.getElementById(chartId);
+            const perfDiv = document.getElementById('perfDiv');
+            const perfDivGesamt = document.getElementById('perfDivGesamt');
+            const perfDivGetData = document.getElementById('perfDivGetData');
+            const perfDivProcessingData = document.getElementById('perfDivProcessingData');
+
+            // Draw-Funktion für den Scatter-Chart
+            function drawScatterChart(containerId, data, bounds) {
+                return new Promise((resolve) => {
+                    const startMark = `${containerId}-start`;
+                    const endMark = `${containerId}-end`;
+                    const measureName = `${containerId}-render`;
+
+                    performance.mark(startMark);
+
+                    const ctx = document.getElementById(containerId).getContext('2d');
+
+                    new Chart(ctx, {
+                        type: 'scatter',
+                        data: {
+                            datasets: [{
+                                label: 'Ort Verbrechen nach Latitude & Longitude',
+                                data: data,
+                                pointRadius: 2,
+                                backgroundColor: '#4682B4'
+                            }]
+                        },
+                        options: {
+                            hover: { mode: null },
+                            animation: false,
+                            scales: {
+                                x: {
+                                    type: 'linear',
+                                    min: bounds.xMin,
+                                    max: bounds.xMax,
+                                    title: {
+                                        display: true,
+                                        text: 'Longitude'
+                                    },
+                                    ticks: {
+                                        precision: 2,
+                                        callback: val => Number(val).toFixed(2)
+                                    }
+                                },
+                                y: {
+                                    type: 'linear',
+                                    min: bounds.yMin,
+                                    max: bounds.yMax,
+                                    title: {
+                                        display: true,
+                                        text: 'Latitude'
+                                    },
+                                    ticks: {
+                                        precision: 2,
+                                        callback: val => Number(val).toFixed(2)
+                                    }
+                                }
+                            },
+                            plugins: {
+                                tooltip: { enabled: false },
+                                legend: { display: false },
+                                title: { display: false }
+                            },
+                            responsive: false,
+                            maintainAspectRatio: false
+                        }
+                    });
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            performance.mark(endMark);
+                            performance.measure(measureName, startMark, endMark);
+
+                            const renderTime10000 = performance.getEntriesByName(measureName)[0]?.duration.toFixed(2);
+
+
+                            benchmarkResults.renderTime10000 = renderTime10000 + " ms";
+
+                            window.singleResultRenderScatterChart = parseFloat(renderTime10000);
+
+                            performance.clearMarks(startMark);
+                            performance.clearMarks(endMark);
+                            performance.clearMeasures(measureName);
+                            resolve();
+                            return renderTime10000;
+                        });
+                    });
+                });
+            }
+
+            if (performance.memory) {
+                if (window.gc) window.gc(); // Garbage Collector auslösen
+            }
+
+            const heapBefore = performance.memory.usedJSHeapSize;
+
+            let heapAfter;
+
+            await drawScatterChart(chartId, formatedSample, bounds)  // Aufruf der Drawfunktion
+
+            heapAfter = performance.memory.usedJSHeapSize;
+
+            const usedRAM = heapAfter - heapBefore;
+            const ramToMB = (usedRAM / (1024 * 1024)).toFixed(2);
+
+            benchmarkResults.usedRAM = ramToMB + " MB";
+
+            performance.mark(endMarkGesamt);
+            performance.measure(measureNameGesamt, startMarkGesamt, endMarkGesamt);
+            performance.measure(measureNameGetData, startGetData, endGetData);
+            performance.measure(measureNameProcessingData, startProcessingData, endProcessingData);
+
+            const messungTimeGetData = performance.getEntriesByName(measureNameGetData)[0]?.duration.toFixed(2);
+            const messungTimeProcessingData = performance.getEntriesByName(measureNameProcessingData)[0]?.duration.toFixed(2);
+            const renderTimeGesamt = performance.getEntriesByName(measureNameGesamt)[0]?.duration.toFixed(2);
+
+
+            performance.clearMarks();
+            performance.clearMeasures();
+
+            perfDiv.textContent = `Renderzeit des Diagramms: ${benchmarkResults.renderTime10000}`;
+            perfDivGesamt.textContent = `Messergebnis des gesamten Rechenprozesses: ${renderTimeGesamt} ms`;
+            perfDivGetData.textContent = `Messergebnis des Parsvorgangs + Fetch: ${messungTimeGetData} ms`;
+            perfDivProcessingData.textContent = `Messergebnis der Datenaufbereitung: ${messungTimeProcessingData} ms`;
+
+            benchmarkResults.renderTimeGesamt = renderTimeGesamt + " ms";
+            benchmarkResults.messungTimeGetData = messungTimeGetData + " ms";
+            benchmarkResults.messungTimeProcessingData = messungTimeProcessingData + " ms";
+
+            window.opener?.postMessage({
+                type: 'renderTime10000',
+                payload: benchmarkResults
+            }, '*');
+
+        });
+    </script>
+
+
+</body>
+
+</html>

@@ -1,0 +1,10 @@
+{
+  "name": "benchmark",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "http-server --cors -c-1"
+  },
+  "dependencies": {
+    "http-server": "^14.1.1"
+  }
+}

@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="de-DE">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bar Chart Chart.js</title>
+    <link rel="stylesheet" href="../style.css" />
+    <script src="./lib/papaparse.min.js"></script>
+    <script src="./lib/chart.js"></script>
+
+</head>
+
+<body>
+    <h1>Benchmark Chart.js Time-Series Verbrechen pro Stunde (17544 Datenpunkte)</h1>
+
+    <div id="chart" class="chart-container">
+        <canvas id="time-series-chartjs" class="chartCanvas"></canvas>
+        <br>
+        <div id="perfDivGesamt"></div>
+        <br><br>
+        <div id="perfDivGetData"></div>
+        <br><br>
+        <div id="perfDivProcessingData"></div>
+        <br><br>
+        <div id="perfDiv"></div>
+    </div>
+    <script>
+
+        const benchmarkResults = {
+            timestamp: null,
+            renderTimeGesamt: null,
+            messungTimeGetData: null,
+            messungTimeProcessingData: null,
+            renderTime17544: null,
+            usedRAM: null,
+        }
+
+        function formatDate(dateInput) {
+            const date = new Date(dateInput);
+
+            const localDate = date.toLocaleString('de-DE', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+
+            return localDate;
+        }
+
+        // Deklarationen der einzelnen Messpunkte
+        const startMarkGesamt = `Messung-start-gesamt`;
+        const endMarkGesamt = `Messung-end-gesamt`;
+        const measureNameGesamt = `Messung-render-gesamt`;
+
+        const startGetData = `Messung-start-getData`;
+        const endGetData = `Messung-end-getData`;
+        const measureNameGetData = `Messung-gesamt-getData`
+        /*
+        const startProcessingData = `Messung-start-processingData`;
+        const endProcessingData = `Messung-end-processingData`;
+        const measureNameProcessingData = `Messung-gesamt-processingData`
+        */
+
+        localStorage.clear();
+        sessionStorage.clear();
+        if ('caches' in window) {
+            caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+        }
+
+        performance.mark(startMarkGesamt);
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            let newTimeStamp = new Date()
+            benchmarkResults.timestamp = formatDate(newTimeStamp);
+
+            let cachedDataWithArrest;
+            let cachedDataWithoutArrest
+
+            async function getDataWithArrest() {
+                if (cachedDataWithArrest) return cachedDataWithArrest;
+
+                const response = await fetch('http://127.0.0.1:8080//withArrest-hourly.json');
+                cachedDataWithArrest = await response.json();
+                return cachedDataWithArrest;
+
+            }
+
+            async function getDataWithoutArrest() {
+                if (cachedDataWithoutArrest) return cachedDataWithoutArrest;
+
+                const response = await fetch('http://127.0.0.1:8080//withoutArrest-hourly.json');
+                cachedDataWithoutArrest = await response.json();
+                return cachedDataWithoutArrest;
+
+            }
+
+            // Vorbereiten der Daten für den Chart
+            performance.mark(startGetData);
+            const dataWithArrest = await getDataWithArrest();
+            const dataWithoutArrest = await getDataWithoutArrest();
+            performance.mark(endGetData);
+
+
+            console.log(dataWithArrest);
+            console.log(dataWithoutArrest);
+
+            /*
+            performance.mark(startProcessingData);
+
+            performance.mark(endProcessingData);
+            */
+
+            // Vorbereiten der Variablen zum Zeichnen des Charts
+            const chartId = 'time-series-chartjs';
+            const chartClassname = 'chartCanvas'
+            const containerId = 'chart';
+            const container = document.getElementById(chartId);
+
+            const perfDiv = document.getElementById('perfDiv');
+            const perfDivProcessingData = document.getElementById('perfDivProcessingData');
+            const perfDivGetData = document.getElementById('perfDivGetData');
+            const perfDivGesamt = document.getElementById('perfDivGesamt');
+
+            const labels = dataWithArrest.map(entry => entry.date);
+            const dataSetWithArrest = dataWithArrest.map(entry => entry.value);
+            const dataSetWithoutArrest = dataWithoutArrest.map(entry => entry.value);
+
+
+            // Draw-Funktion für den Bar-Chart
+            function drawLineChartChartJS(containerId, labels, dataWithArrest, dataWithoutArrest) {
+                return new Promise((resolve) => {
+                    const startMark = `${containerId}-start`;
+                    const endMark = `${containerId}-end`;
+                    const measureName = `${containerId}-render`;
+
+                    performance.mark(startMark);
+
+                    const ctx = document.getElementById(containerId).getContext('2d');
+
+                    new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [
+                                {
+                                    label: 'With Arrest',
+                                    data: dataWithArrest,
+                                    borderColor: '#007bff',
+                                    backgroundColor: '#007bff',
+                                    fill: false,
+                                    tension: 0.1,
+                                    pointRadius: 2
+                                },
+                                {
+                                    label: 'Without Arrest',
+                                    data: dataWithoutArrest,
+                                    borderColor: 'red',
+                                    backgroundColor: 'red',
+                                    fill: false,
+                                    tension: 0.1,
+                                    pointRadius: 2
+                                }
+                            ]
+                        },
+                        options: {
+                            animation: false,
+                            responsive: false,
+                            maintainAspectRatio: false,
+                            interaction: { mode: null },
+                            plugins: {
+                                tooltip: { enabled: false },
+                                legend: {
+                                    display: true,
+                                    labels: {
+                                        boxWidth: 12
+                                    }
+                                },
+                                title: { display: false }
+                            },
+                            scales: {
+                                x: {
+                                    type: 'category',
+                                    title: {
+                                        display: true,
+                                        text: 'Zeit'
+                                    }
+                                },
+                                y: {
+                                    type: 'linear',
+                                    beginAtZero: true,
+                                    title: {
+                                        display: true,
+                                        text: 'Wert'
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+
+                    // Performance-Messung beenden 
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            performance.mark(endMark);
+                            performance.measure(measureName, startMark, endMark);
+
+                            const renderTime17544 = performance.getEntriesByName(measureName)[0]?.duration.toFixed(2);
+
+                            benchmarkResults.renderTime17544 = renderTime17544 + " ms";
+
+                            performance.clearMarks(startMark);
+                            performance.clearMarks(endMark);
+                            performance.clearMeasures(measureName);
+
+                            resolve();
+                            return renderTime17544
+                        });
+                    });
+                });
+            }
+
+            if (performance.memory) {
+                if (window.gc) window.gc(); // Garbage Collector auslösen
+            }
+
+            const heapBefore = performance.memory.usedJSHeapSize;
+
+            let heapAfter;
+
+            await drawLineChartChartJS(chartId, labels, dataSetWithArrest, dataSetWithoutArrest);  // Aufruf der Drawfunktion
+
+            heapAfter = performance.memory.usedJSHeapSize;
+
+            const usedRAM = heapAfter - heapBefore;
+            const ramToMB = (usedRAM / (1024 * 1024)).toFixed(2);
+
+            benchmarkResults.usedRAM = ramToMB + " MB";
+
+
+
+
+
+            performance.mark(endMarkGesamt);
+            performance.measure(measureNameGesamt, startMarkGesamt, endMarkGesamt);
+            performance.measure(measureNameGetData, startGetData, endGetData);
+
+            const messungTimeGetData = performance.getEntriesByName(measureNameGetData)[0]?.duration.toFixed(2);
+            const messungTimeProcessingData = 0;
+            const renderTimeGesamt = performance.getEntriesByName(measureNameGesamt)[0]?.duration.toFixed(2);
+
+
+            performance.clearMarks();
+            performance.clearMeasures();
+
+            perfDiv.textContent = `Renderzeit des Diagramms: ${benchmarkResults.renderTime17544}`;
+            perfDivGesamt.textContent = `Messergebnis des gesamten Rechenprozesses: ${renderTimeGesamt} ms`;
+            perfDivGetData.textContent = `Messergebnis des Parsvorgangs + Fetch: ${messungTimeGetData} ms`;
+            perfDivProcessingData.textContent = `Messergebnis der Datenaufbereitung: 0 ms`;
+
+            benchmarkResults.renderTimeGesamt = renderTimeGesamt + " ms";
+            benchmarkResults.messungTimeGetData = messungTimeGetData + " ms";
+            benchmarkResults.messungTimeProcessingData = 0 + " ms"
+
+            window.opener?.postMessage({
+                type: 'renderTime17544',
+                payload: benchmarkResults
+            }, '*');
+        });
+    </script>
+
+
+</body>
+
+</html>

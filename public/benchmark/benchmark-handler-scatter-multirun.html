@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Benchmark Handler</title>
+  <script src="./lib/echarts.js"></script>
+  <link rel="stylesheet" href="../style.css" />
+</head>
+
+<body>
+  <h1>Benchmark Handler Scatter-Chart</h1>
+  <label for="runCount">Anzahl Durchläufe:</label>
+  <input type="number" id="runCount" min="1" max="100" value="5" style="width: 40px; margin-right: 20px;">
+  <button id="start"> starte x Durchläufe</button>
+  <br>
+  <br>
+  <button id="download">Ergebnisse herunterladen</button>
+  <br>
+  <div id="boxplot-multirun-D3" class="chartDivBoxplot"></div>
+  <br>
+  <div id="boxplot-multirun-ECharts" class="chartDivBoxplot"></div>
+  <br>
+  <div id="boxplot-multirun-Chart" class="chartDivBoxplot"></div>
+  <br>
+  <div id="boxplot-multirun-Chart-RAM-Verbrauch-D3" class="chartDivBoxplot"></div>
+  <br>
+  <div id="boxplot-multirun-Chart-RAM-Verbrauch-ECharts" class="chartDivBoxplot"></div>
+  <br>
+  <div id="boxplot-multirun-Chart-RAM-Verbrauch-Chart" class="chartDivBoxplot"></div>
+  <br>
+  <pre id="trenner-log-d3"></pre>
+  <br>
+  <pre id="trenner-log-d31000"></pre>
+  <pre id="d3-log"></pre>
+  <pre id="trenner-log-d310000"></pre>
+  <pre id="d3-log2"></pre>
+  <pre id="trenner-log-d3100000"></pre>
+  <pre id="d3-log3"></pre>
+  <pre id="trenner-log-ECharts"></pre>
+  <br>
+  <pre id="trenner-log-ECharts1000"></pre>
+  <pre id="Echarts-log"></pre>
+  <pre id="trenner-log-ECharts10000"></pre>
+  <pre id="Echarts-log2"></pre>
+  <pre id="trenner-log-ECharts100000"></pre>
+  <pre id="Echarts-log3"></pre>
+  <pre id="trenner-log-Chart.js"></pre>
+  <br>
+  <pre id="trenner-log-Chart.js1000"></pre>
+  <pre id="Chart-log"></pre>
+  <pre id="trenner-log-Chart.js10000"></pre>
+  <pre id="Chart-log2"></pre>
+  <pre id="trenner-log-Chart.js100000"></pre>
+  <pre id="Chart-log3"></pre>
+
+  <script>
+    // Variablen für die Ausgabe der Ergebnisse im Browser
+    const d3TrennerLog = document.getElementById("trenner-log-d3");
+    const d3TrennerLog1000 = document.getElementById("trenner-log-d31000")
+    const d3TrennerLog10000 = document.getElementById("trenner-log-d310000")
+    const d3TrennerLog100000 = document.getElementById("trenner-log-d3100000")
+    const log = document.getElementById("d3-log");
+    const log2 = document.getElementById("d3-log2");
+    const log3 = document.getElementById("d3-log3");
+    const echartsTrennerLog = document.getElementById("trenner-log-ECharts");
+    const echartsTrennerLog1000 = document.getElementById("trenner-log-ECharts1000");
+    const echartsTrennerLog10000 = document.getElementById("trenner-log-ECharts10000");
+    const echartsTrennerLog100000 = document.getElementById("trenner-log-ECharts100000");
+    const echartsLog = document.getElementById("Echarts-log");
+    const echartsLog2 = document.getElementById("Echarts-log2");
+    const echartsLog3 = document.getElementById("Echarts-log3");
+    const chartTrennerLog = document.getElementById("trenner-log-Chart.js");
+    const chartTrennerLog1000 = document.getElementById("trenner-log-Chart.js1000");
+    const chartTrennerLog10000 = document.getElementById("trenner-log-Chart.js10000");
+    const chartTrennerLog100000 = document.getElementById("trenner-log-Chart.js100000");
+    const chartLog = document.getElementById("Chart-log");
+    const chartLog2 = document.getElementById("Chart-log2");
+    const chartLog3 = document.getElementById("Chart-log3");
+
+    // Variablen für den Benchmark
+    let runs = 5;
+    let currentRun = 0;
+    const chartTypeD3 = "D3.js"
+    const chartTypeEcharts = "ECharts.js"
+    const chartTypeChart = "Chart.js"
+
+    const windowOpen = `Messung-start-window`;
+    const windowClose = `Messung-end-window`;
+    const measureNameWindowHandler = `Messung-gesamt-windowHandler`
+
+    // Variablen um die Ergebnisse der posts zu speichern
+    const results1000D3 = [];
+    const results10000D3 = [];
+    const results100000D3 = [];
+    const results1000Echarts = [];
+    const results10000Echarts = [];
+    const results100000Echarts = [];
+    const results1000Chart = [];
+    const results10000Chart = [];
+    const results100000Chart = [];
+
+    document.getElementById("start").addEventListener('click', () => {
+      const runInput = document.getElementById("runCount");
+      const parsedRuns = parseInt(runInput.value);
+      if (isNaN(parsedRuns) || parsedRuns < 1 || parsedRuns > 100) {
+        runs = 1;
+      } else { runs = parsedRuns }
+
+      currentRun = 1;
+      results1000D3.length = 0;
+      results10000D3.length = 0;
+      results100000D3.length = 0;
+      results1000Echarts.length = 0;
+      results10000Echarts.length = 0;
+      results100000Echarts.length = 0;
+      results1000Chart.length = 0;
+      results10000Chart.length = 0;
+      results100000Chart.length = 0;
+      runBenchmark();
+    });
+// Diese Funktion ist mit Hilfe von KI entstanden
+    async function runBenchmark() {
+      if (currentRun > runs) {
+        d3TrennerLog.textContent = "++++++++++++++++++++ Messergebnisse für D3.js ++++++++++++++++++++"
+        d3TrennerLog1000.textContent = "++++++++++++++++++++ Messung mit 1000 Datenpunkten D3.js ++++++++++++++++++++"
+        log.textContent = JSON.stringify(results1000D3, null, 2);
+        d3TrennerLog10000.textContent = "++++++++++++++++++++ Messung mit 10000 Datenpunkten D3.js ++++++++++++++++++++"
+        log2.textContent = JSON.stringify(results10000D3, null, 2);
+        d3TrennerLog100000.textContent = "++++++++++++++++++++ Messung mit 100000 Datenpunkten D3.js ++++++++++++++++++++"
+        log3.textContent = JSON.stringify(results100000D3, null, 2);
+
+        echartsTrennerLog.textContent = "++++++++++++++++++++ Messergebnisse für ECharts.js ++++++++++++++++++++"
+        echartsTrennerLog1000.textContent = "++++++++++++++++++++ Messung mit 1000 Datenpunkten ECharts.js ++++++++++++++++++++"
+        echartsLog.textContent = JSON.stringify(results1000Echarts, null, 2);
+        echartsTrennerLog10000.textContent = "++++++++++++++++++++ Messung mit 10000 Datenpunkten ECharts.js ++++++++++++++++++++"
+        echartsLog2.textContent = JSON.stringify(results10000Echarts, null, 2);
+        echartsTrennerLog100000.textContent = "++++++++++++++++++++ Messung mit 100000 Datenpunkten ECharts.js ++++++++++++++++++++"
+        echartsLog3.textContent = JSON.stringify(results100000Echarts, null, 2);
+
+        chartTrennerLog.textContent = "++++++++++++++++++++ Messergebnisse für Chart.js ++++++++++++++++++++"
+        chartTrennerLog1000.textContent = "++++++++++++++++++++ Messung mit 1000 Datenpunkten Chart.js ++++++++++++++++++++"
+        chartLog.textContent = JSON.stringify(results1000Chart, null, 2);
+        chartTrennerLog10000.textContent = "++++++++++++++++++++ Messung mit 10000 Datenpunkten Chart.js ++++++++++++++++++++"
+        chartLog2.textContent = JSON.stringify(results10000Chart, null, 2);
+        chartTrennerLog100000.textContent = "++++++++++++++++++++ Messung mit 100000 Datenpunkten Chart.js ++++++++++++++++++++"
+        chartLog3.textContent = JSON.stringify(results100000Chart, null, 2);
+
+        drawBoxplotBenchmark(results1000D3, results10000D3, results100000D3, "boxplot-multirun-D3", chartTypeD3);
+        drawBoxplotBenchmark(results1000Echarts, results10000Echarts, results100000Echarts, "boxplot-multirun-ECharts", chartTypeEcharts);
+        drawBoxplotBenchmark(results1000Chart, results10000Chart, results100000Chart, "boxplot-multirun-Chart", chartTypeChart);
+        drawBoxplotBenchmarkRAM(results1000D3, results10000D3, results100000D3, "boxplot-multirun-Chart-RAM-Verbrauch-D3", chartTypeD3);
+        drawBoxplotBenchmarkRAM(results1000Echarts, results10000Echarts, results100000Echarts, "boxplot-multirun-Chart-RAM-Verbrauch-ECharts", chartTypeEcharts);
+        drawBoxplotBenchmarkRAM(results1000Chart, results10000Chart, results100000Chart, "boxplot-multirun-Chart-RAM-Verbrauch-Chart", chartTypeChart);
+        return;
+      }
+
+      const urlT1 = `scatter-d3-1000dp.html?t=run${currentRun}`;
+      await windowHandler(urlT1, 'renderTime1000', results1000D3);
+      //await windowHandler('scatter-d3-1000dp.html', 'renderTime1000', results1000D3);
+
+      const urlT2 = `scatter-d3-10000dp.html?t=run${currentRun}`;
+      await windowHandler(urlT2, 'renderTime10000', results10000D3);
+      //await windowHandler('scatter-d3-10000dp.html', 'renderTime10000', results10000D3);
+
+      const urlT3 = `scatter-d3-100000dp.html?t=run${currentRun}`;
+      await windowHandler(urlT3, 'renderTime100000', results100000D3);
+      //await windowHandler('scatter-d3-100000dp.html', 'renderTime100000', results100000D3);
+
+      const urlT4 = `scatter-echarts-1000dp.html?t=run${currentRun}`;
+      await windowHandler(urlT4, 'renderTime1000', results1000Echarts);
+      //await windowHandler('scatter-echarts-1000dp.html', 'renderTime1000', results1000Echarts);
+
+      const urlT5 = `scatter-echarts-10000dp.html?t=run${currentRun}`;
+      await windowHandler(urlT5, 'renderTime10000', results10000Echarts);
+      //await windowHandler('scatter-echarts-10000dp.html', 'renderTime10000', results10000Echarts);
+
+      const urlT6 = `scatter-echarts-100000dp.html?t=run${currentRun}`;
+      await windowHandler(urlT6, 'renderTime100000', results100000Echarts);
+      //await windowHandler('scatter-echarts-100000dp.html', 'renderTime100000', results100000Echarts);
+
+      const urlT7 = `scatter-Chartjs-1000dp.html?t=run${currentRun}`;
+      await windowHandler(urlT7, 'renderTime1000', results1000Chart);
+      //await windowHandler('scatter-Chartjs-1000dp.html', 'renderTime1000', results1000Chart);
+
+      const urlT8 = `scatter-Chartjs-10000dp.html?t=run${currentRun}`;
+      await windowHandler(urlT8, 'renderTime10000', results10000Chart);
+      //await windowHandler('scatter-Chartjs-10000dp.html', 'renderTime10000', results10000Chart);
+
+      const urlT9 = `scatter-Chartjs-100000dp.html?t=run${currentRun}`;
+      await windowHandler(urlT9, 'renderTime100000', results100000Chart);
+      //await windowHandler('scatter-Chartjs-100000dp.html', 'renderTime100000', results100000Chart);
+
+      currentRun++;
+      runBenchmark();
+    };
+// Diese Funktion ist mit Hilfe von KI entstanden
+    function windowHandler(url, messageType, resultArray) {
+      return new Promise((resolve, reject) => {
+        performance.mark(windowOpen);
+        const win = window.open(url, `run-${currentRun}`, `benchmark-run-${currentRun}`, "width=1200,height=1000,noopener,noreferrer");
+
+        const handler = (event) => {
+          if (event.data?.type === messageType) {
+            performance.mark(windowClose);
+            performance.measure(measureNameWindowHandler, windowOpen, windowClose);
+            const renderTimeNumber = parseFloat(event.data.payload.renderTimeGesamt);
+
+            const entry = performance.getEntriesByName(measureNameWindowHandler)[0]; //?.duration.toFixed(2);
+            const messungNoise = entry.duration;
+            const noise = messungNoise - renderTimeNumber;
+
+            resultArray.push({ run: currentRun, ...event.data.payload, overhead: noise.toFixed(2) + ' ms' });
+            window.removeEventListener('message', handler);
+
+            performance.clearMarks();
+            performance.clearMeasures();
+            setTimeout(() => {
+              win.close();
+              resolve();  // Fenster wurde geschlossen, Resultate wurden verarbeitet
+            }, 100);
+          }
+        };
+
+        window.addEventListener('message', handler);
+      });
+    };
+
+
+    //**********************************************
+    // Box-Plot Funktion für die Renderzeit
+    // Diese Funktion ist mit Hilfe von KI entstanden
+    //********************************************** 
+    function drawBoxplotBenchmark(data1000, data10000, data100000, containerId, chartType) {
+      const renderTimes1000 = data1000.map(entry => parseFloat(entry.renderTime1000)).filter(Number.isFinite);
+      const renderTimes10000 = data10000.map(entry => parseFloat(entry.renderTime10000)).filter(Number.isFinite);
+      const renderTimes100000 = data100000.map(entry => parseFloat(entry.renderTime100000)).filter(Number.isFinite);
+
+      const chartDom = document.getElementById(containerId);
+      const myChart = echarts.init(chartDom);
+
+      const dataArrays = [renderTimes1000, renderTimes10000, renderTimes100000];
+
+      const boxData = dataArrays.map(arr => {
+        const sorted = [...arr].sort((a, b) => a - b);
+        const q1 = quantile(sorted, 0.25);
+        const median = quantile(sorted, 0.5);
+        const q3 = quantile(sorted, 0.75);
+        const min = Math.min(...sorted);
+        const max = Math.max(...sorted);
+        return [min, q1, median, q3, max];
+      });
+
+      function quantile(arr, q) {
+        const pos = (arr.length - 1) * q;
+        const base = Math.floor(pos);
+        const rest = pos - base;
+        if (arr[base + 1] !== undefined) {
+          return arr[base] + rest * (arr[base + 1] - arr[base]);
+        } else {
+          return arr[base];
+        }
+      }
+
+      const statsLabels = boxData.map((stats, index) => {
+        return {
+          text:
+            `min: ${stats[0].toFixed(2)} ms\n` +
+            `Q1: ${stats[1].toFixed(2)} ms\n` +
+            `Median: ${stats[2].toFixed(2)} ms\n` +
+            `Q3: ${stats[3].toFixed(2)} ms\n` +
+            `max: ${stats[4].toFixed(2)} ms`,
+          left: `${15 + index * 28}%`,
+          top: '88%',
+          textStyle: {
+            fontWeight: 'bold',
+            fontSize: 14,
+            lineHeight: 14,
+            color: '#000'
+          },
+          borderColor: '#999',
+          borderWidth: 1,
+          backgroundColor: '#fff',
+          padding: 8
+        };
+      });
+
+      const option = {
+        backgroundColor: '#EDEDED',
+        title: [
+          {
+            text: `Benchmark-Ergebnisse Scatterchart-${chartType}-${runs}-Durchläufe`,
+            left: 'center',
+            textStyle: {
+              fontSize: 18,
+              fontWeight: 'bold',
+              color: '#000'
+            }
+          },
+          ...statsLabels
+        ],
+        tooltip: {
+          trigger: 'item',
+          axisPointer: {
+            type: 'shadow'
+          }
+        },
+        grid: {
+          left: '10%',
+          right: '10%',
+          bottom: '15%'
+        },
+        xAxis: {
+          type: 'category',
+          boundaryGap: true,
+          data: ['1000 Datenpunkte', '10000 Datenpunkte', '100000 Datenpunkte'],
+          nameGap: 30,
+          axisLabel: {
+            fontSize: 14,
+            fontWeight: 'bold',
+            color: '#000'
+          },
+          nameTextStyle: {
+            fontSize: 14,
+            fontWeight: 'bold',
+            color: '#000'
+          },
+          axisLine: {
+            lineStyle: {
+              color: '#000'
+            }
+          },
+          splitArea: {
+            show: false
+          },
+          splitLine: {
+            show: false
+          }
+        },
+        yAxis: {
+          type: 'log',
+          name: 'Renderzeit (ms)',
+          logBase: 2,
+          minorSplitLine: {
+            show: true
+          },
+          axisLabel: {
+            fontSize: 14,
+            fontWeight: 'bold',
+            color: '#000'
+          },
+          nameTextStyle: {
+            fontSize: 14,
+            fontWeight: 'bold',
+            color: '#000'
+          },
+          axisLine: {
+            lineStyle: {
+              color: '#000'
+            }
+          },
+          splitArea: {
+            show: true
+          }
+        },
+        series: [
+          {
+            name: 'boxplot',
+            type: 'boxplot',
+            data: boxData,
+            itemStyle: {
+              borderWidth: 2, // dickere Linien
+              opacity: 0.5 // transparenter Fülleffekt
+            },
+            label: {
+              show: true,
+              position: 'outside',
+              formatter: function (param) {
+                const stats = param.data;
+                return [
+                  `min: ${stats[0].toFixed(2)} ms`,
+                  `Q1: ${stats[1].toFixed(2)} ms`,
+                  `Median: ${stats[2].toFixed(2)} ms`,
+                  `Q3: ${stats[3].toFixed(2)} ms`,
+                  `max: ${stats[4].toFixed(2)} ms`
+                ].join('\n');
+              },
+              fontSize: 10,
+              color: '#333'
+            },
+            emphasis: {
+              label: {
+                show: true
+              }
+            }
+          }
+        ]
+      };
+
+      myChart.setOption(option);
+    }
+
+    //**********************************************
+    // Box-Plot Funktion für die RAM-Verbrauch
+    // Diese Funktion ist mit Hilfe von KI entstanden
+    //**********************************************
+    function drawBoxplotBenchmarkRAM(data1000, data10000, data100000, containerId, chartType) {
+      const RAM1000 = data1000.map(entry => parseFloat(entry.usedRAM)).filter(Number.isFinite);
+      const RAM10000 = data10000.map(entry => parseFloat(entry.usedRAM)).filter(Number.isFinite);
+      const RAM100000 = data100000.map(entry => parseFloat(entry.usedRAM)).filter(Number.isFinite);
+
+      const chartDom = document.getElementById(containerId);
+      const myChart = echarts.init(chartDom);
+
+      const dataArrays = [RAM1000, RAM10000, RAM100000];
+
+      // Berechne Boxplot-Daten
+      const boxData = dataArrays.map(arr => {
+        const sorted = [...arr].sort((a, b) => a - b);
+        const q1 = quantile(sorted, 0.25);
+        const median = quantile(sorted, 0.5);
+        const q3 = quantile(sorted, 0.75);
+        const min = Math.min(...sorted);
+        const max = Math.max(...sorted);
+        return [min, q1, median, q3, max];
+      });
+
+      function quantile(arr, q) {
+        const pos = (arr.length - 1) * q;
+        const base = Math.floor(pos);
+        const rest = pos - base;
+        return arr[base + 1] !== undefined
+          ? arr[base] + rest * (arr[base + 1] - arr[base])
+          : arr[base];
+      }
+
+      const statsLabels = boxData.map((stats, index) => ({
+        text:
+          `min: ${stats[0].toFixed(2)} MB\n` +
+          `Q1: ${stats[1].toFixed(2)} MB\n` +
+          `Median: ${stats[2].toFixed(2)} MB\n` +
+          `Q3: ${stats[3].toFixed(2)} MB\n` +
+          `max: ${stats[4].toFixed(2)} MB`,
+        left: `${15 + index * 28}%`,
+        top: '88%',
+        textStyle: {
+          fontWeight: 'bold',
+          fontSize: 14,
+          lineHeight: 14,
+          color: '#000'
+        },
+        borderColor: '#999',
+        borderWidth: 1,
+        backgroundColor: '#fff',
+        padding: 8
+      }));
+
+      const option = {
+        backgroundColor: '#EDEDED',
+        title: [
+          {
+            text: `Benchmark-Ergebnisse Scatterchart-${chartType}-${runs}-Durchläufe-RAM-Verbrauch`,
+            left: 'center',
+            textStyle: {
+              fontSize: 18,
+              fontWeight: 'bold',
+              color: '#000'
+            }
+          },
+          ...statsLabels
+        ],
+        tooltip: {
+          trigger: 'item',
+          axisPointer: {
+            type: 'shadow'
+          }
+        },
+        grid: {
+          left: '10%',
+          right: '10%',
+          bottom: '15%'
+        },
+        xAxis: {
+          type: 'category',
+          boundaryGap: true,
+          data: ['1000 Datenpunkte', '10000 Datenpunkte', '100000 Datenpunkte'],
+          nameGap: 30,
+          axisLabel: {
+            fontSize: 14,
+            fontWeight: 'bold',
+            color: '#000'
+          },
+          nameTextStyle: {
+            fontSize: 14,
+            fontWeight: 'bold',
+            color: '#000'
+          },
+          axisLine: {
+            lineStyle: {
+              color: '#000'
+            }
+          },
+          splitArea: { show: false },
+          splitLine: { show: false }
+        },
+        yAxis: {
+          type: 'log',
+          name: 'RAM-Verbrauch (MB)',
+          logBase: 2,
+          minorSplitLine: { show: true },
+          axisLabel: {
+            fontSize: 14,
+            fontWeight: 'bold',
+            color: '#000'
+          },
+          nameTextStyle: {
+            fontSize: 14,
+            fontWeight: 'bold',
+            color: '#000'
+          },
+          axisLine: {
+            lineStyle: {
+              color: '#000'
+            }
+          },
+          splitArea: { show: true }
+        },
+        series: [
+          {
+            name: 'boxplot',
+            type: 'boxplot',
+            data: boxData,
+            itemStyle: {
+              borderWidth: 2, // dickere Linien
+              opacity: 0.5 // transparenter Fülleffekt
+            },
+            label: {
+              show: true,
+              position: 'outside',
+              formatter: function (param) {
+                const stats = param.data;
+                return [
+                  `min: ${stats[0].toFixed(2)} ms`,
+                  `Q1: ${stats[1].toFixed(2)} ms`,
+                  `Median: ${stats[2].toFixed(2)} ms`,
+                  `Q3: ${stats[3].toFixed(2)} ms`,
+                  `max: ${stats[4].toFixed(2)} ms`
+                ].join('\n');
+              },
+              fontSize: 10,
+              color: '#333'
+            },
+            emphasis: {
+              label: {
+                show: true
+              }
+            }
+          }
+        ]
+      };
+
+      myChart.setOption(option);
+    }
+
+    function formatDate(dateInput) {
+      const date = new Date(dateInput);
+
+      const localDate = date.toLocaleString('de-DE', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
+
+      return localDate;
+    }
+
+    document.getElementById("download").addEventListener("click", () => {
+      const now = new Date();
+      const formated = formatDate(now);
+
+      const benchmarks = [
+        { name: "messdaten-scatter-1000d3", data: results1000D3 },
+        { name: "messdaten-scatter-10000d3", data: results10000D3 },
+        { name: "messdaten-scatter-100000d3", data: results100000D3 },
+        { name: "messdaten-scatter-1000echarts", data: results1000Echarts },
+        { name: "messdaten-scatter-10000echarts", data: results10000Echarts },
+        { name: "messdaten-scatter-100000echarts", data: results100000Echarts },
+        { name: "messdaten-scatter-1000chart.js", data: results1000Chart },
+        { name: "messdaten-scatter-10000chart.js", data: results10000Chart },
+        { name: "messdaten-scatter-100000chart.js", data: results100000Chart },
+      ]
+
+      benchmarks.forEach(({ name, data }) => {
+        const blobContent = {
+          title: name,
+          runCount: runs,
+          timestamp: formated,
+          data: data
+        };
+
+        const blob = new Blob([JSON.stringify(blobContent, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+
+
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${name}-${formated}-${runs}-Durchläufe.json`;
+        a.click();
+
+        URL.revokeObjectURL(url);
+      });
+    });
+
+  </script>
+
+</body>
+
+</html>

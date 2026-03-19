@@ -1,0 +1,9 @@
+# Node.js
+node_modules/
+
+# vsc
+.vscode/
+
+# JS Librarys
+public/benchmark/lib/
+

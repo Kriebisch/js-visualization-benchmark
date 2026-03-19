@@ -1,0 +1,284 @@
+
+<!DOCTYPE html>
+<html lang="de-DE">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bar Chart D3</title>
+    <link rel="stylesheet" href="../style.css" />
+    <script src="./lib/papaparse.min.js"></script>
+    <script src="./lib/d3.js"></script>
+</head>
+
+<body>
+    <h1>Benchmark D3.js Bar-Chart 10 Datenpunkte</h1>
+
+    <div id="chart" class="chart-container">
+        <div id="bar-d3" class="chartDiv"></div>
+        <br>
+        <div id="perfDivGesamt"></div>
+        <br><br>
+        <div id="perfDivGetData"></div>
+        <br><br>
+        <div id="perfDivProcessingData"></div>
+        <br><br>
+        <div id="perfDiv"></div>
+
+    </div>
+    <script>
+
+        const benchmarkResults = {
+            timestamp: null,
+            renderTimeGesamt: null,
+            messungTimeGetData: null,
+            messungTimeProcessingData: null,
+            renderTime10: null,
+            usedRAM: null,
+        }
+
+        function formatDate(dateInput) {
+            const date = new Date(dateInput);
+
+            const localDate = date.toLocaleString('de-DE', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+
+            return localDate;
+        }
+
+        // Deklarationen der einzelnen Messpunkte
+        const startMarkGesamt = `Messung-start-gesamt`;
+        const endMarkGesamt = `Meddung-end-gesamt`;
+        const measureNameGesamt = `Messung-render-gesamt`;
+
+        const startGetData = `Messung-start-getData`;
+        const endGetData = `Messung-end-getData`;
+        const measureNameGetData = `Messung-gesamt-getData`
+
+        const startProcessingData = `Messung-start-processingData`;
+        const endProcessingData = `Messung-end-processingData`;
+        const measureNameProcessingData = `Messung-gesamt-processingData`
+
+        localStorage.clear();
+        sessionStorage.clear();
+        if ('caches' in window) {
+            caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+        }
+
+        performance.mark(startMarkGesamt);
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            let newTimeStamp = new Date()
+            benchmarkResults.timestamp = formatDate(newTimeStamp);
+
+            let cachedData;
+
+            async function getData() {
+                if (cachedData) return cachedData;
+
+                return new Promise((resolve, reject) => {
+                    Papa.parse('http://127.0.0.1:8080/Crimes-01_2023-12_2024.csv', {
+                        download: true,
+                        header: true,
+                        complete: (results) => {
+                            cachedData = results.data;
+                            resolve(cachedData);
+                        },
+                        error: reject
+                    });
+                });
+
+            }
+
+            // Vorbereiten der Daten für den Chart
+            let cachedTopBlocks;
+
+            function getTopBlocks(data, topN = 10) {
+                if (cachedTopBlocks) return cachedTopBlocks;
+
+                const blockCounts = {};
+
+                data.forEach(row => {
+                    const block = row['Block'];
+                    if (block) {
+                        if (!blockCounts[block]) {
+                            blockCounts[block] = 0;
+                        }
+                        blockCounts[block]++;
+                    }
+                });
+
+                const sortedBlocks = Object.entries(blockCounts)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, topN);
+
+                const chartData = sortedBlocks.map(([block, count]) => ({
+                    block,
+                    count,
+                }));
+                return chartData;
+            }
+
+            performance.mark(startGetData);
+            const data = await getData();  // fetchen und Parsen der Daten
+            performance.mark(endGetData);
+
+            performance.mark(startProcessingData);
+            const barChartData = getTopBlocks(data); // Aufbereiten der Daten für den Chart
+            performance.mark(endProcessingData);
+
+
+            // Vorbereiten der Variablen zum Zeichnen des Charts
+            const chartId = 'bar-d3';
+            const chartClassname = 'chartDiv'
+            const containerId = 'chart';
+            const container = document.getElementById(chartId);
+            const perfDiv = document.getElementById('perfDiv');
+            const perfDivGesamt = document.getElementById('perfDivGesamt');
+            const perfDivGetData = document.getElementById('perfDivGetData');
+            const perfDivProcessingData = document.getElementById('perfDivProcessingData');
+
+            // Draw-Funktion für den Bar-Chart
+            // Diese Funktion ist mit Hilfe von KI entstanden
+            function drawChart(barChartData, containerId) {
+                return new Promise(resolve => {
+
+                    const startMark = `${chartId}-start`;
+                    const endMark = `${chartId}-end`;
+                    const measureName = `${chartId}-render`;
+
+                    performance.mark(startMark); // Nur hier wird gemessen
+
+                    const width = 800;
+                    const height = 600;
+                    const marginTop = 20;
+                    const marginRight = 100;
+                    const marginBottom = 100;
+                    const marginLeft = 150;
+
+                    const x = d3.scaleBand()
+                        .domain(barChartData.map(d => d.block))
+                        .range([marginLeft, width - marginRight])
+                        .padding(0.1);
+
+                    const y = d3.scaleLinear()
+                        .domain([0, d3.max(barChartData, d => d.count)]).nice()
+                        .range([height - marginBottom, marginTop])
+
+
+                    const xAxis = g => g
+                        .attr("transform", `translate(0,${height - marginBottom})`)
+                        .call(d3.axisBottom(x))
+                        .call(g => g.selectAll("text").attr("transform", "rotate(-45)").style("text-anchor", "end"));
+
+                    const yAxis = g => g
+                        .attr("transform", `translate(${marginLeft},0)`)
+                        .call(d3.axisLeft(y));
+
+                    const svg = d3.create("svg")
+                        .attr("viewBox", [0, 0, width, height])
+                        .attr("width", width)
+                        .attr("height", height)
+                        .attr("style", "max-width: 100%; height: auto;");
+
+                    svg.append('text')
+                        .attr('x', width / 2)
+                        .attr('y', 30)  // etwas Abstand nach unten
+                        .attr('text-anchor', 'middle') // zentrieren
+                        .style('font-size', '15px')
+                        .style('font-weight', 'bold')
+                        .text('Top 10 Wohnblöcke / Anzahl Verbrechen 2023.01-2024.12');
+
+                    svg.append("g")
+                        .selectAll("rect")
+                        .data(barChartData)
+                        .join("rect")
+                        .attr("x", d => x(d.block))
+                        .attr("y", d => y(d.count))
+                        .attr("width", x.bandwidth())
+                        .attr("height", d => y(0) - y(d.count))
+                        .attr("fill", "steelblue");
+
+                    svg.append("g").call(xAxis);
+                    svg.append("g").call(yAxis);
+
+                    container.appendChild(svg.node());
+
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            performance.mark(endMark);
+                            performance.measure(measureName, startMark, endMark);
+
+                            const renderTime10 = performance.getEntriesByName(measureName)[0]?.duration.toFixed(2);
+
+                            benchmarkResults.renderTime10 = renderTime10 + " ms";
+
+                            performance.clearMarks(startMark);
+                            performance.clearMarks(endMark);
+                            performance.clearMeasures(measureName);
+
+                            resolve();
+                            return renderTime10;
+                        });
+                    });
+                });
+            }
+
+            if (performance.memory) {
+                if (window.gc) window.gc(); // Garbage Collector auslösen
+            }
+
+            const heapBefore = performance.memory.usedJSHeapSize;
+
+            let heapAfter;
+
+            await drawChart(barChartData, container)  // Aufruf der Drawfunktion
+
+            heapAfter = performance.memory.usedJSHeapSize;
+
+            const usedRAM = heapAfter - heapBefore;
+            const ramToMB = (usedRAM / (1024 * 1024)).toFixed(2);
+
+            benchmarkResults.usedRAM = ramToMB + " MB";
+
+            performance.mark(endMarkGesamt);
+            performance.measure(measureNameGesamt, startMarkGesamt, endMarkGesamt);
+            performance.measure(measureNameGetData, startGetData, endGetData);
+            performance.measure(measureNameProcessingData, startProcessingData, endProcessingData);
+
+            const messungTimeGetData = performance.getEntriesByName(measureNameGetData)[0]?.duration.toFixed(2);
+            const messungTimeProcessingData = performance.getEntriesByName(measureNameProcessingData)[0]?.duration.toFixed(2);
+            const renderTimeGesamt = performance.getEntriesByName(measureNameGesamt)[0]?.duration.toFixed(2);
+
+
+            performance.clearMarks();
+            performance.clearMeasures();
+
+            perfDiv.textContent = `Renderzeit des Diagramms: ${benchmarkResults.renderTime10}`;
+            perfDivGesamt.textContent = `Messergebnis des gesamten Rechenprozesses: ${renderTimeGesamt} ms`;
+            perfDivGetData.textContent = `Messergebnis des Parsvorgangs + Fetch: ${messungTimeGetData} ms`;
+            perfDivProcessingData.textContent = `Messergebnis der Datenaufbereitung: ${messungTimeProcessingData} ms`;
+
+            benchmarkResults.renderTimeGesamt = renderTimeGesamt + " ms";
+            benchmarkResults.messungTimeGetData = messungTimeGetData + " ms";
+            benchmarkResults.messungTimeProcessingData = messungTimeProcessingData + " ms";
+
+            window.opener?.postMessage({
+                type: 'renderTime10',
+                payload: benchmarkResults
+            }, '*');
+
+        });
+    </script>
+
+
+</body>
+
+</html>

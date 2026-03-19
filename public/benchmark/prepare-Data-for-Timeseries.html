@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bar Chart D3</title>
+    <link rel="stylesheet" href="../style.css" />
+    <script src="./lib/papaparse.min.js"></script>
+    <script src="./lib/luxon.js"></script>
+    <script src="./lib/d3.js"></script>
+</head>
+
+<body>
+    <h1>Daten für Time-Series-Chart vorbereitung und Download</h1>
+    <br>
+    <br>
+    <button id="download">Ergebnisse herunterladen</button>
+
+    <script>
+
+        document.addEventListener('DOMContentLoaded', async () => {
+
+            let cachedData;
+
+            async function getData() {
+
+                if (cachedData) return cachedData;
+
+                return new Promise((resolve, reject) => {
+                    Papa.parse('http://127.0.0.1:8080/Crimes-01_2023-12_2024.csv', {
+                        download: true,
+                        header: true,
+                        complete: (results) => {
+                            cachedData = results.data;
+                            resolve(cachedData);
+                        },
+                        error: reject
+                    });
+                });
+
+            }
+            // Diese Funktion ist mit Hilfe von KI entstanden
+            function generateHourlyTimestamps(start, end) {
+                const timestamps = [];
+                let current = start.startOf('hour');
+
+                while (current <= end) {
+                    timestamps.push(current.toFormat('dd/MM/yyyy HH'));
+                    current = current.plus({ hours: 1 });
+                }
+
+                return timestamps;
+            }
+            // Diese Funktion ist mit Hilfe von KI entstanden
+            function generateDaylieTimestamps(start, end) {
+                const timestamps = [];
+                let current = start.startOf('day');
+
+                while (current <= end) {
+                    timestamps.push(current.toFormat('dd/MM/yyyy'));
+                    current = current.plus({ days: 1 });
+                }
+
+                return timestamps;
+            }
+
+            // Diese Funktion ist mit Hilfe von KI entstanden
+            function generateMonthlyTimestamps(start, end) {
+                const timestamps = [];
+                let current = start.startOf('month');
+
+                while (current <= end) {
+                    timestamps.push(current.toFormat('MM/yyyy'));
+                    current = current.plus({ months: 1 });
+                }
+
+                return timestamps;
+            }
+
+
+
+            const start = luxon.DateTime.fromISO('2023-01-01T00:00');
+            const end = luxon.DateTime.fromISO('2024-12-31T23:00');
+
+            const startDay = luxon.DateTime.fromISO('2023-01-01');
+            const endDay = luxon.DateTime.fromISO('2024-12-31');
+
+            const startMonth = luxon.DateTime.fromISO('2023-01');
+            const endDayMonth = luxon.DateTime.fromISO('2024-12');
+
+            const hourlyTimestamps = generateHourlyTimestamps(start, end);
+
+            const daylyTimestamps = generateDaylieTimestamps(startDay, endDay);
+
+            const monthlyTimestamps = generateMonthlyTimestamps(startMonth, endDayMonth);
+
+
+            
+            // Diese Funktion ist mit Hilfe von KI entstanden
+            function splitByArrest(data) {
+                const withArrest = [];
+                const withoutArrest = [];
+
+                data.forEach(row => {
+                    const rawDate = row.Date;
+                    if(!rawDate) return
+
+                    const dt = luxon.DateTime.fromFormat(rawDate.trim(), 'MM/dd/yyyy hh:mm:ss a');
+
+                    const newRow = {
+                        ...row,
+                        parsedDate: dt
+                    };
+
+                    if (row.Arrest === "true") {
+                        withArrest.push(newRow);
+                    } else {
+                        withoutArrest.push(newRow);
+                    }
+                });
+
+                return { withArrest, withoutArrest };
+            }
+
+            const data = await getData();  // fetchen und Parsen der Daten
+
+            console.log(data)
+
+            const splittedCrimes = splitByArrest(data); // Aufbereiten der Daten für den Chart
+
+
+            const valueDateWithArrestMonth = splittedCrimes.withArrest.map(entry => entry.parsedDate.toFormat("MM/yyyy"));
+
+            const valueDateWithoutArrestMonth = splittedCrimes.withoutArrest.map(entry => entry.parsedDate.toFormat("MM/yyyy"));
+
+            const valueDateWithArrestDay = splittedCrimes.withArrest.map(entry => entry.parsedDate.toFormat("dd/MM/yyyy"));
+
+            const valueDateWithoutArrestDay = splittedCrimes.withoutArrest.map(entry => entry.parsedDate.toFormat("dd/MM/yyyy"));
+
+            const valueDateWithArrestHour = splittedCrimes.withArrest.map(entry => entry.parsedDate.toFormat("dd/MM/yyyy HH"));
+
+            const valueDateWithoutArrestHour = splittedCrimes.withoutArrest.map(entry => entry.parsedDate.toFormat("dd/MM/yyyy HH"));
+
+
+            const monthlyDataPointsWithArrest = monthlyTimestamps.map(month => {
+                const count = valueDateWithArrestMonth.filter(date => date === month).length;
+                return {
+                    date: month,
+                    value: count
+                };
+            });
+
+            const monthlyDataPointsWithoutArrest = monthlyTimestamps.map(month => {
+                const count = valueDateWithoutArrestMonth.filter(date => date === month).length;
+                return {
+                    date: month,
+                    value: count
+                };
+            });
+
+
+            const daylyDataPointsWithArrest = daylyTimestamps.map(day => {
+                const count = valueDateWithArrestDay.filter(date => date === day).length;
+                return {
+                    date: day,
+                    value: count
+                };
+            });
+
+            const daylyDataPointsWithoutArrest = daylyTimestamps.map(day => {
+                const count = valueDateWithoutArrestDay.filter(date => date === day).length;
+                return {
+                    date: day,
+                    value: count
+                };
+            });
+
+
+            const hourlyDataPointsWithArrest = hourlyTimestamps.map(hour => {
+                const count = valueDateWithArrestHour.filter(date => date === hour).length;
+                return {
+                    date: hour,
+                    value: count
+                };
+            });
+
+
+
+            const hourlyDataPointsWithoutArrest = hourlyTimestamps.map(hour => {
+                const count = valueDateWithoutArrestHour.filter(date => date === hour).length;
+                return {
+                    date: hour,
+                    value: count
+                };
+            });
+
+
+            document.getElementById("download").addEventListener("click", () => {
+                const valueSets = [
+                    { name: "withArrest-monthly", data: monthlyDataPointsWithArrest },
+                    { name: "withoutArrest-monthly", data: monthlyDataPointsWithoutArrest },
+                    { name: "withArrest-daily", data: daylyDataPointsWithArrest },
+                    { name: "withoutArrest-daily", data: daylyDataPointsWithoutArrest },
+                    { name: "withArrest-hourly", data: hourlyDataPointsWithArrest },
+                    { name: "withoutArrest-hourly", data: hourlyDataPointsWithoutArrest },
+                ];
+
+                valueSets.forEach(({ name, data }) => {
+                    const blob = new Blob([JSON.stringify(data, null, 2)], {
+                        type: "application/json"
+                    });
+
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `${name}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                });
+            });
+
+
+        });
+
+    </script>
+
+
+</body>
+
+</html>
